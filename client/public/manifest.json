@@ -1,0 +1,12 @@
+{
+  "name": "TaskGenius",
+  "short_name": "TaskGenius",
+  "description": "AI-Powered Productivity Companion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

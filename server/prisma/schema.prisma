@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @db.VarChar(100)
+  email             String   @unique @db.VarChar(255)
+  password          String   @db.VarChar(255)
+  avatar            String   @default("") @db.Text
+  goals             String   @default("") @db.Text
+  dailyTarget       Int      @default(5)
+  workingHourStart  String   @default("09:00") @db.VarChar(5)
+  workingHourEnd    String   @default("17:00") @db.VarChar(5)
+  preferredStudyTime String  @default("morning") @db.VarChar(20)
+  role              String   @default("user") @db.VarChar(10)
+  voiceMuted        Boolean  @default(false)
+  voiceLanguage     String   @default("en") @db.VarChar(10)
+  voiceVolume       Float    @default(1.0)
+  resetPasswordToken String? @db.Text
+  resetPasswordExpire DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tasks         Task[]
+  notifications Notification[]
+  aiHistories   AiHistory[]
+  analytics     Analytics[]
+
+  @@map("users")
+}
+
+model Task {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  title                 String    @db.VarChar(300)
+  description           String    @default("") @db.Text
+  priority              String    @default("medium") @db.VarChar(10)
+  category              String    @default("general") @db.VarChar(50)
+  status                String    @default("pending") @db.VarChar(20)
+  deadline              DateTime?
+  estimatedDuration     Int       @default(60)
+  completedAt           DateTime?
+  completionProbability Int       @default(100)
+  riskLevel             String    @default("low") @db.VarChar(10)
+  aiSuggested           Boolean   @default(false)
+  isEmergency           Boolean   @default(false)
+  emergencyResolvedAt   DateTime?
+  order                 Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  subtasks      TaskSubtask[]
+  notes         TaskNote[]
+  notifications Notification[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, deadline])
+  @@index([userId, priority])
+  @@map("tasks")
+}
+
+model TaskSubtask {
+  id        String  @id @default(uuid()) @db.Uuid
+  taskId    String  @map("task_id") @db.Uuid
+  title     String  @db.VarChar(300)
+  completed Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_subtasks")
+}
+
+model TaskNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_notes")
+}
+
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  type       String    @db.VarChar(20)
+  title      String    @db.VarChar(300)
+  message    String    @db.Text
+  taskId     String?   @map("task_id") @db.Uuid
+  urgency    String    @default("low") @db.VarChar(10)
+  read       Boolean   @default(false)
+  delivered  Boolean   @default(false)
+  deliveredAt DateTime?
+  actionUrl  String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
+}
+
+model AiHistory {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  sessionId String   @db.VarChar(100)
+  role      String   @db.VarChar(10)
+  content   String   @db.Text
+  type      String   @default("chat") @db.VarChar(20)
+  metadata  Json?
+  context   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sessionId, createdAt])
+  @@index([userId, type, createdAt])
+  @@map("ai_history")
+}
+
+model Analytics {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  date                 DateTime @db.Date
+  tasksCompleted       Int      @default(0)
+  tasksMissed          Int      @default(0)
+  tasksCreated         Int      @default(0)
+  focusSessions        Int      @default(0)
+  focusMinutes         Int      @default(0)
+  productivityScore    Int      @default(0)
+  averageCompletionTime Int     @default(0)
+  aiInteractions       Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("analytics")
+}
