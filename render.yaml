@@ -3,7 +3,7 @@ services:
     name: taskgenius-api
     env: node
     plan: free
-    buildCommand: cd server && npm install && npx prisma generate
+    buildCommand: cd server && npm install --include=dev && npx prisma generate && npx prisma db push
     startCommand: cd server && node server.js
     envVars:
       - key: NODE_ENV
