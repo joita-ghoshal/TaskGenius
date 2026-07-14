@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, List, Plus, Clock, AlertTriangle, CheckCircle2, Circle } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, getDay, parseISO, isToday } from 'date-fns'
 import { tasksAPI } from '../services/api'
@@ -50,6 +51,7 @@ function formatTaskTime(dateStr) {
 }
 
 export default function CalendarPage() {
+  const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState(VIEWS.MONTHLY)
   const [tasks, setTasks] = useState([])
@@ -383,7 +385,7 @@ function WeeklyView({ days, currentDate, tasks, onDayClick }) {
               )}
               {dayTasks.slice(0, 5).map(task => (
                 <motion.div
-                  key={task._id}
+                  key={task.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={`p-2.5 rounded-xl bg-white border-l-[3px] cursor-pointer hover:shadow-md transition-all duration-200 ${
@@ -450,6 +452,7 @@ function DailyView({ date, tasks, onBack }) {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="btn-primary gap-2"
+          onClick={() => navigate('/dashboard/tasks?create=true')}
         >
           <Plus size={16} />
           Create Task
@@ -468,6 +471,7 @@ function DailyView({ date, tasks, onBack }) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="btn-primary gap-2"
+              onClick={() => navigate('/dashboard/tasks?create=true')}
             >
               <Plus size={16} />
               Create Task
@@ -482,7 +486,7 @@ function DailyView({ date, tasks, onBack }) {
 
               return (
                 <motion.div
-                  key={task._id || i}
+                  key={task.id || i}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}

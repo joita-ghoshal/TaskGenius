@@ -163,7 +163,7 @@ export default function TasksPage() {
         subtasks: data.subtasks || [],
       };
       if (editingTask) {
-        await updateTask(editingTask._id, payload);
+        await updateTask(editingTask.id, payload);
         toast.success('Task updated');
       } else {
         await createTask(payload);
@@ -178,8 +178,8 @@ export default function TasksPage() {
   const handleDelete = async (task) => {
     if (!window.confirm(`Delete "${task.title}"?`)) return;
     try {
-      await deleteTask(task._id);
-      if (expandedTask?._id === task._id) setExpandedTask(null);
+      await deleteTask(task.id);
+      if (expandedTask?.id === task.id) setExpandedTask(null);
       toast.success('Task deleted');
     } catch {
       toast.error('Failed to delete task');
@@ -189,7 +189,7 @@ export default function TasksPage() {
   const toggleComplete = async (task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
     try {
-      await updateTask(task._id, { status: newStatus });
+      await updateTask(task.id, { status: newStatus });
     } catch {
       toast.error('Failed to update task');
     }
@@ -220,7 +220,7 @@ export default function TasksPage() {
     setAiAnalysis(null);
     try {
       const { aiAPI } = await import('../services/api');
-      const { data } = await aiAPI.analyzeTask(task._id);
+      const { data } = await aiAPI.analyzeTask(task.id);
       setAiAnalysis(data.analysis || data);
       toast.success('Analysis complete');
     } catch {
@@ -375,7 +375,7 @@ export default function TasksPage() {
           <AnimatePresence mode="popLayout">
             {filteredTasks.map(task => (
               <motion.div
-                key={task._id}
+                key={task.id}
                 layout
                 initial={{ opacity: 0, y: 20, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -403,7 +403,7 @@ export default function TasksPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                         <button
-                          onClick={() => setExpandedTask(expandedTask?._id === task._id ? null : task)}
+                          onClick={() => setExpandedTask(expandedTask?.id === task.id ? null : task)}
                           className={`text-left font-semibold truncate hover:text-brand-600 transition-colors ${
                             task.status === 'completed' ? 'line-through text-text-tertiary' : 'text-text-primary'
                           }`}
@@ -511,7 +511,7 @@ export default function TasksPage() {
 
                 {/* Expanded Detail View */}
                 <AnimatePresence>
-                  {expandedTask?._id === task._id && (
+                  {expandedTask?.id === task.id && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}

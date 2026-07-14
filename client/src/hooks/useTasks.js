@@ -36,7 +36,7 @@ export function useTasks(params) {
   const updateTask = async (id, taskData) => {
     try {
       const { data } = await tasksAPI.update(id, taskData);
-      setTasks(prev => prev.map(t => t._id === id ? data.task : t));
+      setTasks(prev => prev.map(t => t.id === id ? data.task : t));
       toast.success('Task updated');
       return data.task;
     } catch (err) {
@@ -48,7 +48,7 @@ export function useTasks(params) {
   const deleteTask = async (id) => {
     try {
       await tasksAPI.delete(id);
-      setTasks(prev => prev.filter(t => t._id !== id));
+      setTasks(prev => prev.filter(t => t.id !== id));
       toast.success('Task deleted');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete task');

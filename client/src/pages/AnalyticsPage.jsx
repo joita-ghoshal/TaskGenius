@@ -4,6 +4,7 @@ import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { TrendingUp, Target, Clock, AlertTriangle, Download, Calendar, Award, CheckCircle2, ListTodo, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { analyticsAPI } from '../services/api'
+import toast from 'react-hot-toast'
 
 const PERIODS = ['Weekly', 'Monthly']
 
@@ -236,6 +237,29 @@ export default function AnalyticsPage() {
     return `This ${period.toLowerCase()} you completed ${summary.completedTasks} out of ${summary.totalTasks} tasks (${rate}% completion rate). Your average productivity score was ${avgProductivity.toFixed(0)} out of 100. ${summary.missedDeadlines > 0 ? `You missed ${summary.missedDeadlines} deadline${summary.missedDeadlines > 1 ? 's' : ''}. ` : ''}${stats?.streak ? `You're on a ${stats.streak}-day streak!` : ''}`
   }, [analytics, summary, period, productivityData, stats])
 
+  const handleDownloadReport = () => {
+    const now = new Date()
+    const rows = [
+      ['Metric', 'Value'],
+      ['Period', period],
+      ['Total Tasks', summary.totalTasks],
+      ['Completed Tasks', summary.completedTasks],
+      ['Missed Deadlines', summary.missedDeadlines],
+      ['Average Completion Time (min)', summary.avgCompletionTime],
+      ['Report', reportText],
+      ['Generated', format(now, 'yyyy-MM-dd HH:mm:ss')],
+    ]
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `taskgenius-report-${format(now, 'yyyy-MM-dd')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Report downloaded')
+  }
+
   if (loading) {
     return (
       <div className="page-container">
@@ -455,7 +479,7 @@ export default function AnalyticsPage() {
               </div>
               <p className="text-sm text-text-secondary leading-relaxed">{reportText || 'Loading report...'}</p>
             </div>
-            <button className="btn-primary shrink-0 whitespace-nowrap">
+            <button onClick={handleDownloadReport} className="btn-primary shrink-0 whitespace-nowrap">
               <Download size={16} className="mr-1.5" />
               Download Report
             </button>

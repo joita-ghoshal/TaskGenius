@@ -1,17 +1,38 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
-import { User, Lock, Bell, Mic, Save, Volume2 } from 'lucide-react'
+import { User, Lock, Bell, Mic, Save, Volume2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SettingsPage() {
   const { user, updateProfile, updatePassword } = useAuth()
+  const fileInputRef = useRef(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [voiceMuted, setVoiceMuted] = useState(user?.voiceSettings?.muted ?? false)
   const [voiceLang, setVoiceLang] = useState(user?.voiceSettings?.language ?? 'en')
   const [voiceVolume, setVoiceVolume] = useState(user?.voiceSettings?.volume ?? 80)
+
+  const handleUploadPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) return toast.error('File must be less than 2MB')
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('avatar', file)
+      const { data } = await import('../services/api').then(m => m.default.put('/auth/profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }))
+      toast.success('Photo uploaded successfully')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload photo')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
 
   const {
     register: profileRegister,
@@ -119,7 +140,11 @@ export default function SettingsPage() {
                 {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'TG'}
               </div>
               <div>
-                <button type="button" className="btn-secondary text-sm">Upload Photo</button>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
+                <button type="button" className="btn-secondary text-sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
+                  {uploadingPhoto ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
+                  {uploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                </button>
                 <p className="text-xs text-text-tertiary mt-1">JPG, PNG or GIF. Max 2MB.</p>
               </div>
             </div>

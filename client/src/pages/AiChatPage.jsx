@@ -243,7 +243,7 @@ export default function AiChatPage() {
     e.stopPropagation()
     try {
       await aiAPI.clearHistory(sid)
-      setSessions(prev => prev.filter(s => s.id !== sid && s._id !== sid))
+      setSessions(prev => prev.filter(s => s.id !== sid && s.id !== sid))
       if (sessionId === sid) newChat()
       toast.success('Session cleared')
     } catch {
@@ -295,15 +295,15 @@ export default function AiChatPage() {
                 )}
                 {sessions.map((s, i) => (
                   <button
-                    key={s.id || s._id || i}
-                    onClick={() => switchSession(s.id || s._id)}
+                    key={s.id || s.id || i}
+                    onClick={() => switchSession(s.id || s.id)}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-left transition-colors ${
-                      (s.id || s._id) === sessionId ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-surface-tertiary'
+                      (s.id || s.id) === sessionId ? 'bg-brand-50 text-brand-700 font-medium' : 'text-text-secondary hover:bg-surface-tertiary'
                     }`}
                   >
                     <MessageSquare size={15} className="shrink-0" />
                     <span className="flex-1 truncate">{s.title || s.name || `Chat ${i + 1}`}</span>
-                    <button onClick={(e) => clearSession(s.id || s._id, e)} className="text-text-tertiary hover:text-danger-500 transition-colors p-0.5">
+                    <button onClick={(e) => clearSession(s.id || s.id, e)} className="text-text-tertiary hover:text-danger-500 transition-colors p-0.5">
                       <Trash2 size={13} />
                     </button>
                   </button>

@@ -1,5 +1,25 @@
 const prisma = require('../config/prisma');
 
+exports.createNotification = async (req, res, next) => {
+  try {
+    const { type, title, message, taskId, urgency, actionUrl } = req.body;
+    const notification = await prisma.notification.create({
+      data: {
+        userId: req.user.id,
+        type: type || 'info',
+        title,
+        message,
+        taskId: taskId || null,
+        urgency: urgency || 'low',
+        actionUrl: actionUrl || null
+      }
+    });
+    res.status(201).json({ success: true, notification });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getNotifications = async (req, res, next) => {
   try {
     const { read, limit } = req.query;

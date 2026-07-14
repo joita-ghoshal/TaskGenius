@@ -35,7 +35,9 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
   updatePassword: (data) => api.put('/auth/password', data),
-  updateVoiceSettings: (data) => api.put('/auth/voice-settings', data)
+  updateVoiceSettings: (data) => api.put('/auth/voice-settings', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data)
 };
 
 export const tasksAPI = {
@@ -61,12 +63,14 @@ export const notificationsAPI = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/read-all'),
-  delete: (id) => api.delete(`/notifications/${id}`)
+  delete: (id) => api.delete(`/notifications/${id}`),
+  create: (data) => api.post('/notifications', data)
 };
 
 export const analyticsAPI = {
   get: (params) => api.get('/analytics', { params }),
-  getStats: () => api.get('/analytics/stats')
+  getStats: () => api.get('/analytics/stats'),
+  log: (data) => api.post('/analytics/log', data)
 };
 
 export default api;

@@ -1,5 +1,42 @@
 const prisma = require('../config/prisma');
 
+exports.logAnalytics = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { date, tasksCompleted, tasksMissed, tasksCreated, focusSessions, focusMinutes, productivityScore, averageCompletionTime, aiInteractions } = req.body;
+    const recordDate = date ? new Date(date) : new Date();
+    recordDate.setHours(0, 0, 0, 0);
+    const analytics = await prisma.analytics.upsert({
+      where: { userId_date: { userId, date: recordDate } },
+      update: {
+        tasksCompleted: tasksCompleted !== undefined ? tasksCompleted : undefined,
+        tasksMissed: tasksMissed !== undefined ? tasksMissed : undefined,
+        tasksCreated: tasksCreated !== undefined ? tasksCreated : undefined,
+        focusSessions: focusSessions !== undefined ? focusSessions : undefined,
+        focusMinutes: focusMinutes !== undefined ? focusMinutes : undefined,
+        productivityScore: productivityScore !== undefined ? productivityScore : undefined,
+        averageCompletionTime: averageCompletionTime !== undefined ? averageCompletionTime : undefined,
+        aiInteractions: aiInteractions !== undefined ? aiInteractions : undefined
+      },
+      create: {
+        userId,
+        date: recordDate,
+        tasksCompleted: tasksCompleted || 0,
+        tasksMissed: tasksMissed || 0,
+        tasksCreated: tasksCreated || 0,
+        focusSessions: focusSessions || 0,
+        focusMinutes: focusMinutes || 0,
+        productivityScore: productivityScore || 0,
+        averageCompletionTime: averageCompletionTime || 0,
+        aiInteractions: aiInteractions || 0
+      }
+    });
+    res.json({ success: true, analytics });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getAnalytics = async (req, res, next) => {
   try {
     const userId = req.user.id;

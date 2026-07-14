@@ -239,11 +239,11 @@ export default function DashboardPage() {
   }, [])
 
   const handleToggleTask = useCallback(async (task) => {
-    if (!task?._id) return
+    if (!task?.id) return
     try {
       const { tasksAPI } = await import('../services/api')
-      const res = await tasksAPI.update(task._id, { completed: !task.completed })
-      setTasks(prev => prev.map(t => t._id === task._id ? res.data.task : t))
+      const res = await tasksAPI.update(task.id, { completed: !task.completed })
+      setTasks(prev => prev.map(t => t.id === task.id ? res.data.task : t))
     } catch {
       // silent fail
     }
@@ -251,7 +251,7 @@ export default function DashboardPage() {
 
   const handleRescueMode = useCallback(() => {
     const emergency = tasks?.find(isEmergency)
-    if (emergency) navigate(`/tasks/${emergency._id}`)
+    if (emergency) navigate(`/tasks/${emergency.id}`)
   }, [tasks, navigate])
 
   const stats = useMemo(() => ({
@@ -372,7 +372,7 @@ export default function DashboardPage() {
               <div className="space-y-3 relative">
                 {insights.slice(0, 4).map((insight, i) => (
                   <motion.div
-                    key={insight._id || insight.id || i}
+                    key={insight.id || insight.id || i}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
@@ -402,7 +402,7 @@ export default function DashboardPage() {
               <div className="space-y-1">
                 {tasks.map((task, i) => (
                   <motion.div
-                    key={task._id || i}
+                    key={task.id || i}
                     variants={itemVariants}
                   >
                     <TaskItem task={task} onToggle={handleToggleTask} />
@@ -437,7 +437,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {upcomingTasks.map((task, i) => (
                   <motion.div
-                    key={task._id || i}
+                    key={task.id || i}
                     variants={itemVariants}
                     className="flex items-center justify-between p-2.5 rounded-xl hover:bg-surface-tertiary/50 transition-colors"
                   >

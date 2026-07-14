@@ -5,6 +5,7 @@ const analyticsController = require('../controllers/analyticsController');
 
 router.use(protect);
 
+router.post('/log', analyticsController.logAnalytics);
 router.get('/', analyticsController.getAnalytics);
 router.get('/stats', analyticsController.getProductivityStats);
 

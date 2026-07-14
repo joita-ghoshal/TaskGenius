@@ -76,16 +76,16 @@ export default function EmergencyRescue({ task, onClose, onComplete }) {
   useEffect(() => {
     const fetchPlan = async () => {
       try {
-        const { data } = await aiAPI.analyzeTask(task._id);
+        const { data } = await aiAPI.analyzeTask(task.id);
         setActionPlan(data.analysis);
       } catch { /* ignore */ } finally { setLoading(false); }
     };
-    if (task?._id) fetchPlan();
+    if (task?.id) fetchPlan();
   }, [task]);
 
   const handleComplete = async () => {
     try {
-      await tasksAPI.update(task._id, { status: 'completed' });
+      await tasksAPI.update(task.id, { status: 'completed' });
       setCompleted(true);
       stop();
       if (onComplete) onComplete();

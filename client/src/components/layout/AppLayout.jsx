@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import VoiceReminder from '../VoiceReminder';
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -16,6 +17,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-secondary">
+      <VoiceReminder />
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen((prev) => !prev)} />
 
       <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
