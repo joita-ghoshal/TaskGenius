@@ -49,17 +49,31 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-async function start() {
+async function connectDB() {
   try {
     await prisma.$connect();
     console.log('PostgreSQL connected');
-    app.listen(PORT, () => {
-      console.log(`TaskGenius server running on port ${PORT}`);
-    });
+    return true;
   } catch (error) {
-    console.error('Failed to connect to database:', error);
-    process.exit(1);
+    console.error('Failed to connect to database:', error.message);
+    return false;
   }
+}
+
+async function start() {
+  const dbConnected = await connectDB();
+  if (!dbConnected) {
+    console.log('Server starting without database connection. Will retry...');
+    setInterval(async () => {
+      try {
+        await prisma.$connect();
+        console.log('PostgreSQL reconnected');
+      } catch {}
+    }, 30000);
+  }
+  app.listen(PORT, () => {
+    console.log(`TaskGenius server running on port ${PORT}`);
+  });
 }
 
 start();
