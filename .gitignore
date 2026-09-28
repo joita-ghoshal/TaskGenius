@@ -9,3 +9,4 @@ Thumbs.db
 coverage/
 .vercel
 prisma/migrations/0_init/migration.sql
+client/.env.vercel
