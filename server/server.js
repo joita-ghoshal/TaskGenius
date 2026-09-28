@@ -35,8 +35,19 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'TaskGenius API is running', timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ success: true, message: 'TaskGenius API is running', database: 'connected', timestamp });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: 'TaskGenius API is running but the database is unreachable',
+      database: 'disconnected',
+      timestamp,
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);

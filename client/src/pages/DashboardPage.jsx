@@ -372,7 +372,7 @@ export default function DashboardPage() {
               <div className="space-y-3 relative">
                 {insights.slice(0, 4).map((insight, i) => (
                   <motion.div
-                    key={insight.id || insight.id || i}
+                    key={insight.id || i}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + i * 0.1 }}
