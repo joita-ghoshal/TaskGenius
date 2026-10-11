@@ -143,7 +143,7 @@ export default function LandingPage() {
       </Section>
 
       {/* How It Works */}
-      <section className="bg-surface-secondary">
+      <section className="bg-surface-secondary overflow-hidden">
         <Section>
           <motion.div variants={fadeInUp} className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-text-primary">How It Works</h2>
