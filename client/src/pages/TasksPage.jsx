@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTasks } from '../hooks/useTasks';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ const riskConfig = {
   low: 'bg-green-500',
   medium: 'bg-yellow-500',
   high: 'bg-red-500',
+  critical: 'bg-red-600',
 };
 
 const defaultTaskForm = {
@@ -71,6 +73,7 @@ function completionProbabilityColor(value) {
 
 export default function TasksPage() {
   const { tasks, loading, createTask, updateTask, deleteTask } = useTasks();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -89,6 +92,22 @@ export default function TasksPage() {
   } = useForm({ defaultValues: defaultTaskForm });
 
   const watchSubtasks = watch('subtasks', []);
+
+  useEffect(() => {
+    const urlSearch = searchParams.get('search');
+    if (urlSearch) setSearch(urlSearch);
+    if (searchParams.get('create') === 'true') {
+      setEditingTask(null);
+      reset(defaultTaskForm);
+      setModalOpen(true);
+    }
+    if (urlSearch || searchParams.get('create')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('search');
+      next.delete('create');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, reset]);
 
   const allCategories = useMemo(() => {
     const cats = new Set();
@@ -136,6 +155,9 @@ export default function TasksPage() {
 
   const openEditModal = (task) => {
     setEditingTask(task);
+    const notesText = Array.isArray(task.notes)
+      ? task.notes.map(n => n.content || '').filter(Boolean).join('\n')
+      : (task.notes || '');
     reset({
       title: task.title || '',
       description: task.description || '',
@@ -143,7 +165,7 @@ export default function TasksPage() {
       priority: task.priority || 'medium',
       category: task.category || '',
       estimatedDuration: task.estimatedDuration || '',
-      notes: task.notes || '',
+      notes: notesText,
       subtasks: task.subtasks || [],
     });
     setModalOpen(true);
@@ -157,10 +179,12 @@ export default function TasksPage() {
 
   const onSubmit = async (data) => {
     try {
+      const notesText = (data.notes || '').trim();
       const payload = {
         ...data,
         estimatedDuration: data.estimatedDuration ? Number(data.estimatedDuration) : undefined,
         subtasks: data.subtasks || [],
+        notes: notesText ? notesText.split('\n').filter(l => l.trim()).map(content => ({ content: content.trim() })) : [],
       };
       if (editingTask) {
         await updateTask(editingTask.id, payload);
@@ -382,7 +406,7 @@ export default function TasksPage() {
                 exit={{ opacity: 0, y: -20, scale: 0.97 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className={`card card-hover overflow-hidden ${
-                  task.emergency ? 'border-red-400 animate-countdown-pulse' : ''
+                  task.isEmergency ? 'border-red-400 animate-countdown-pulse' : ''
                 }`}
               >
                 <div className="p-4 sm:p-5">
@@ -411,7 +435,7 @@ export default function TasksPage() {
                           {task.title}
                         </button>
                         <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto">
-                          {task.emergency && (
+                          {task.isEmergency && (
                             <span className="badge-red gap-1 animate-emergency-pulse">
                               <AlertTriangle className="w-3 h-3" />
                               Emergency
@@ -447,8 +471,8 @@ export default function TasksPage() {
                           </span>
                         )}
                         <span className="inline-flex items-center gap-1">
-                          <span className={`w-2 h-2 rounded-full ${riskConfig[task.risk] || 'bg-gray-400'}`} />
-                          {task.risk || 'Unknown'} risk
+                          <span className={`w-2 h-2 rounded-full ${riskConfig[task.riskLevel] || 'bg-gray-400'}`} />
+                          {task.riskLevel || 'Unknown'} risk
                         </span>
                       </div>
 
@@ -527,10 +551,14 @@ export default function TasksPage() {
                           </div>
                         )}
 
-                        {task.notes && (
+                        {Array.isArray(task.notes) && task.notes.length > 0 && (
                           <div>
                             <h4 className="text-xs font-semibold text-text-tertiary uppercase tracking-wider mb-1">Notes</h4>
-                            <p className="text-sm text-text-secondary">{task.notes}</p>
+                            <div className="space-y-1">
+                              {task.notes.map((n, i) => (
+                                <p key={n.id || i} className="text-sm text-text-secondary">{n.content || String(n)}</p>
+                              ))}
+                            </div>
                           </div>
                         )}
 

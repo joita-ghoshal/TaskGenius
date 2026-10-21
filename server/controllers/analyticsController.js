@@ -3,20 +3,23 @@ const prisma = require('../config/prisma');
 exports.logAnalytics = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { date, tasksCompleted, tasksMissed, tasksCreated, focusSessions, focusMinutes, productivityScore, averageCompletionTime, aiInteractions } = req.body;
+    const { date, tasksCompleted, tasksMissed, tasksCreated, focusSessions, focusMinutes, productivityScore, averageCompletionTime, aiInteractions, increment } = req.body;
     const recordDate = date ? new Date(date) : new Date();
     recordDate.setHours(0, 0, 0, 0);
+
+    const wrap = (v) => (increment && typeof v === 'number' ? { increment: v } : v);
+
     const analytics = await prisma.analytics.upsert({
       where: { userId_date: { userId, date: recordDate } },
       update: {
-        tasksCompleted: tasksCompleted !== undefined ? tasksCompleted : undefined,
-        tasksMissed: tasksMissed !== undefined ? tasksMissed : undefined,
-        tasksCreated: tasksCreated !== undefined ? tasksCreated : undefined,
-        focusSessions: focusSessions !== undefined ? focusSessions : undefined,
-        focusMinutes: focusMinutes !== undefined ? focusMinutes : undefined,
+        tasksCompleted: tasksCompleted !== undefined ? wrap(tasksCompleted) : undefined,
+        tasksMissed: tasksMissed !== undefined ? wrap(tasksMissed) : undefined,
+        tasksCreated: tasksCreated !== undefined ? wrap(tasksCreated) : undefined,
+        focusSessions: focusSessions !== undefined ? wrap(focusSessions) : undefined,
+        focusMinutes: focusMinutes !== undefined ? wrap(focusMinutes) : undefined,
         productivityScore: productivityScore !== undefined ? productivityScore : undefined,
         averageCompletionTime: averageCompletionTime !== undefined ? averageCompletionTime : undefined,
-        aiInteractions: aiInteractions !== undefined ? aiInteractions : undefined
+        aiInteractions: aiInteractions !== undefined ? wrap(aiInteractions) : undefined
       },
       create: {
         userId,
@@ -60,17 +63,22 @@ exports.getAnalytics = async (req, res, next) => {
     const missedTasks = tasks.filter(t => t.status === 'missed').length;
     const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in-progress');
 
-    const avgCompletionTime = analytics.length > 0
-      ? Math.round(analytics.reduce((a, c) => a + c.averageCompletionTime, 0) / analytics.length)
+    const completedWithTimes = tasks.filter(t => t.status === 'completed' && t.completedAt && t.createdAt);
+    const avgCompletionTime = completedWithTimes.length > 0
+      ? Math.round(completedWithTimes.reduce((a, t) => a + (new Date(t.completedAt) - new Date(t.createdAt)), 0) / completedWithTimes.length / 60000)
       : 0;
 
-    const productivityTrend = analytics.map(a => ({
-      date: a.date,
-      score: a.productivityScore,
-      completed: a.tasksCompleted,
-      missed: a.tasksMissed,
-      focusMinutes: a.focusMinutes
-    }));
+    const productivityTrend = analytics.map(a => {
+      const denom = a.tasksCompleted + a.tasksMissed;
+      const score = denom > 0 ? Math.round((a.tasksCompleted / denom) * 100) : (a.productivityScore || 0);
+      return {
+        date: a.date,
+        score,
+        completed: a.tasksCompleted,
+        missed: a.tasksMissed,
+        focusMinutes: a.focusMinutes
+      };
+    });
 
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -103,7 +111,9 @@ exports.getProductivityStats = async (req, res, next) => {
     ]);
 
     const dailyAverages = analytics.reduce((acc, a) => {
-      acc.productivity += a.productivityScore;
+      const denom = a.tasksCompleted + a.tasksMissed;
+      const score = denom > 0 ? Math.round((a.tasksCompleted / denom) * 100) : (a.productivityScore || 0);
+      acc.productivity += score;
       acc.completed += a.tasksCompleted;
       acc.focusMinutes += a.focusMinutes;
       return acc;
@@ -120,7 +130,11 @@ exports.getProductivityStats = async (req, res, next) => {
     });
     const categoryBreakdown = Object.values(categoryMap);
 
-    const bestDay = analytics.sort((a, b) => b.productivityScore - a.productivityScore)[0];
+    const scored = analytics.map(a => {
+      const denom = a.tasksCompleted + a.tasksMissed;
+      return { ...a, computedScore: denom > 0 ? Math.round((a.tasksCompleted / denom) * 100) : (a.productivityScore || 0) };
+    });
+    const bestDay = scored.sort((a, b) => b.computedScore - a.computedScore)[0];
 
     res.json({
       success: true,

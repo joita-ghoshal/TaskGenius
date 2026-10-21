@@ -9,15 +9,17 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [resetUrl, setResetUrl] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email) return toast.error('Please enter your email');
     setLoading(true);
     try {
-      await authAPI.forgotPassword({ email });
+      const { data } = await authAPI.forgotPassword({ email });
+      setResetUrl(data.resetUrl || '');
       setSent(true);
-      toast.success('Password reset link sent to your email');
+      toast.success(data.resetUrl ? 'Reset link ready' : 'Password reset link sent to your email');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send reset link');
     } finally {
@@ -46,16 +48,28 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <div className="text-center">
               <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
-              <p className="text-gray-600 text-sm mb-6">
-                If an account exists with that email, you will receive a password reset link shortly.
+              <p className="text-gray-600 text-sm mb-4">
+                {resetUrl
+                  ? 'Your password reset link is ready. It expires in 1 hour.'
+                  : 'If an account exists with that email, you will receive a password reset link shortly.'}
               </p>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm"
-              >
-                <ArrowLeft size={16} />
-                Back to Login
-              </Link>
+              {resetUrl && (
+                <a
+                  href={resetUrl}
+                  className="inline-block w-full mb-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold text-sm shadow-md shadow-blue-200 hover:from-blue-600 hover:to-blue-700 transition-all"
+                >
+                  Open Reset Link
+                </a>
+              )}
+              <div>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm"
+                >
+                  <ArrowLeft size={16} />
+                  Back to Login
+                </Link>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">

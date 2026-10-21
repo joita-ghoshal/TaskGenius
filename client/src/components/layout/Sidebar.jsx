@@ -17,12 +17,12 @@ import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/tasks', label: 'Tasks', icon: ListChecks },
-  { to: '/calendar', label: 'Calendar', icon: Calendar },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/ai-chat', label: 'AI Chat', icon: Bot },
-  { to: '/focus-mode', label: 'Focus Mode', icon: Timer },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks },
+  { to: '/dashboard/calendar', label: 'Calendar', icon: Calendar },
+  { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/dashboard/ai-chat', label: 'AI Chat', icon: Bot },
+  { to: '/dashboard/focus', label: 'Focus Mode', icon: Timer },
+  { to: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
 const sidebarVariants = {
@@ -124,8 +124,9 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {navItems.map((item, i) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.to || location.pathname.startsWith(item.to + '/');
-            const isDashboardActive = item.to === '/dashboard' && location.pathname === '/';
+            const isActive = item.to === '/dashboard'
+              ? location.pathname === '/dashboard' || location.pathname === '/dashboard/'
+              : location.pathname === item.to || location.pathname.startsWith(item.to + '/');
 
             return (
               <motion.div
@@ -145,7 +146,7 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
                   className={`
                     group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
                     transition-all duration-200 relative overflow-hidden
-                    ${isActive || isDashboardActive
+                    ${isActive
                       ? 'text-brand-600 bg-brand-50/80 shadow-sm shadow-brand-500/5'
                       : 'text-text-secondary hover:text-text-primary hover:bg-surface-tertiary/70'
                     }
@@ -179,10 +180,17 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
         </nav>
 
         <div className="p-4 border-t border-border/50">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-tertiary/50 hover:bg-surface-tertiary transition-all duration-200 cursor-pointer group">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-accent-400 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0">
-              {initials}
-            </div>
+          <NavLink
+            to="/dashboard/settings"
+            className="flex items-center gap-3 p-3 rounded-xl bg-surface-tertiary/50 hover:bg-surface-tertiary transition-all duration-200 cursor-pointer group"
+          >
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user?.name || 'User'} className="w-9 h-9 rounded-full object-cover shadow-sm shrink-0" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-accent-400 flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0">
+                {initials}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-text-primary truncate">
                 {user?.name || 'User'}
@@ -192,7 +200,7 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
               </p>
             </div>
             <div className="w-2 h-2 rounded-full bg-accent-500 shadow-sm shadow-accent-500/40" />
-          </div>
+          </NavLink>
         </div>
       </motion.aside>
     </>

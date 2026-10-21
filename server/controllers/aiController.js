@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+
 const generateSystemPrompt = async (userId) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -76,24 +78,37 @@ Is there anything specific about your tasks I can help you with?`;
 
     const systemPrompt = await generateSystemPrompt(userId);
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const chatHistory = history.map(h => ({
       role: h.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: h.content }]
     }));
 
-    const chat = model.startChat({
-      history: [
-        { role: 'user', parts: [{ text: systemPrompt }] },
-        { role: 'model', parts: [{ text: 'I understand my role as TaskGenius AI productivity coach.' }] },
-        ...chatHistory
-      ],
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
-    });
-
-    const result = await chat.sendMessage(message);
-    const response = result.response.text();
+    const candidateModels = [...new Set([GEMINI_MODEL, 'gemini-3.6-flash', 'gemini-3.5-flash-lite'])];
+    let response;
+    let lastError;
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const chat = model.startChat({
+          history: [
+            { role: 'user', parts: [{ text: systemPrompt }] },
+            { role: 'model', parts: [{ text: 'I understand my role as TaskGenius AI productivity coach.' }] },
+            ...chatHistory
+          ],
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
+        });
+        const result = await chat.sendMessage(message);
+        response = result.response.text();
+        break;
+      } catch (err) {
+        lastError = err;
+        const status = err?.status;
+        if (status !== 503 && status !== 429 && status !== 404) throw err;
+        console.warn(`Gemini model ${modelName} unavailable (${status}), trying fallback`);
+      }
+    }
+    if (!response) throw lastError;
 
     await prisma.aiHistory.create({ data: { userId, sessionId, role: 'user', content: message, type: 'chat' } });
     await prisma.aiHistory.create({ data: { userId, sessionId, role: 'assistant', content: response, type: 'chat' } });
@@ -234,10 +249,34 @@ exports.getHistory = async (req, res, next) => {
 
     const history = await prisma.aiHistory.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
       take: 50
     });
-    res.json({ success: true, history });
+
+    const allEntries = await prisma.aiHistory.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'asc' },
+      select: { sessionId: true, role: true, content: true, createdAt: true }
+    });
+    const sessionMap = new Map();
+    for (const entry of allEntries) {
+      if (!entry.sessionId) continue;
+      let s = sessionMap.get(entry.sessionId);
+      if (!s) {
+        s = { id: entry.sessionId, title: null, messageCount: 0, createdAt: entry.createdAt, updatedAt: entry.createdAt };
+        sessionMap.set(entry.sessionId, s);
+      }
+      s.messageCount += 1;
+      s.updatedAt = entry.createdAt;
+      if (!s.title && entry.role === 'user' && entry.content) {
+        s.title = entry.content.length > 60 ? `${entry.content.slice(0, 60)}...` : entry.content;
+      }
+    }
+    const sessions = [...sessionMap.values()]
+      .filter(s => s.title)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    res.json({ success: true, history, sessions });
   } catch (error) {
     next(error);
   }

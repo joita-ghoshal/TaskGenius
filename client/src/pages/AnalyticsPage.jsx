@@ -179,8 +179,8 @@ export default function AnalyticsPage() {
         analyticsAPI.get({ period: period.toLowerCase() }),
         analyticsAPI.getStats(),
       ])
-      setAnalytics(analyticsRes.data)
-      setStats(statsRes.data)
+      setAnalytics(analyticsRes.data?.analytics || null)
+      setStats(statsRes.data?.stats || null)
     } catch (err) {
       setError(err.message || 'Failed to load analytics')
     } finally {
@@ -192,50 +192,56 @@ export default function AnalyticsPage() {
     fetchData()
   }, [fetchData])
 
-  const summary = useMemo(() => ({
-    totalTasks: analytics?.totalTasks ?? 0,
-    completedTasks: analytics?.completedTasks ?? 0,
-    missedDeadlines: analytics?.missedDeadlines ?? 0,
-    avgCompletionTime: analytics?.avgCompletionTime ?? 0,
-  }), [analytics])
+  const summary = useMemo(() => {
+    const s = analytics?.summary || {}
+    return {
+      totalTasks: s.totalTasks ?? 0,
+      completedTasks: s.completedTasks ?? 0,
+      missedDeadlines: s.missedTasks ?? 0,
+      avgCompletionTime: s.avgCompletionTime ?? 0,
+    }
+  }, [analytics])
 
   const productivityData = useMemo(() => {
-    return (analytics?.productivity || []).map(d => ({
+    return (analytics?.productivityTrend || []).map(d => ({
       ...d,
       name: format(new Date(d.date), 'MMM dd'),
     }))
-  }, [analytics?.productivity])
+  }, [analytics?.productivityTrend])
 
   const focusData = useMemo(() => {
-    return (analytics?.focusMinutes || []).map(d => ({
-      ...d,
-      name: format(new Date(d.date), 'EEE'),
-    }))
-  }, [analytics?.focusMinutes])
+    return (analytics?.productivityTrend || [])
+      .filter(d => (d.focusMinutes || 0) > 0)
+      .map(d => ({
+        name: format(new Date(d.date), 'EEE'),
+        minutes: d.focusMinutes,
+      }))
+  }, [analytics?.productivityTrend])
 
   const completionData = useMemo(() => {
-    const c = analytics?.completionRate || {}
     return [
-      { name: 'Completed', value: c.completed ?? analytics?.completedTasks ?? 0 },
-      { name: 'Missed', value: c.missed ?? analytics?.missedDeadlines ?? 0 },
-      { name: 'Pending', value: c.pending ?? Math.max(0, (analytics?.totalTasks ?? 0) - (analytics?.completedTasks ?? 0) - (analytics?.missedDeadlines ?? 0)) },
+      { name: 'Completed', value: summary.completedTasks },
+      { name: 'Missed', value: summary.missedDeadlines },
+      { name: 'Pending', value: analytics?.summary?.pendingTasks ?? 0 },
     ].filter(d => d.value > 0)
-  }, [analytics])
+  }, [analytics, summary])
 
   const categories = useMemo(() => {
-    return (analytics?.categories || []).map(c => ({
-      ...c,
-      total: (c.completed || 0) + (c.pending || 0),
+    return (stats?.categoryBreakdown || []).map(c => ({
+      name: c.category,
+      completed: c.completed || 0,
+      pending: c.pending || 0,
+      total: c.total || 0,
     }))
-  }, [analytics?.categories])
+  }, [stats?.categoryBreakdown])
 
   const reportText = useMemo(() => {
     if (!analytics) return ''
     const rate = summary.totalTasks > 0 ? ((summary.completedTasks / summary.totalTasks) * 100).toFixed(1) : '0.0'
     const days = productivityData.length || 1
     const avgProductivity = productivityData.reduce((s, d) => s + (d.score || 0), 0) / days
-    return `This ${period.toLowerCase()} you completed ${summary.completedTasks} out of ${summary.totalTasks} tasks (${rate}% completion rate). Your average productivity score was ${avgProductivity.toFixed(0)} out of 100. ${summary.missedDeadlines > 0 ? `You missed ${summary.missedDeadlines} deadline${summary.missedDeadlines > 1 ? 's' : ''}. ` : ''}${stats?.streak ? `You're on a ${stats.streak}-day streak!` : ''}`
-  }, [analytics, summary, period, productivityData, stats])
+    return `This ${period.toLowerCase()} you completed ${summary.completedTasks} out of ${summary.totalTasks} tasks (${rate}% completion rate). Your average productivity score was ${avgProductivity.toFixed(0)} out of 100. ${summary.missedDeadlines > 0 ? `You missed ${summary.missedDeadlines} deadline${summary.missedDeadlines > 1 ? 's' : ''}. ` : ''}`
+  }, [analytics, summary, period, productivityData])
 
   const handleDownloadReport = () => {
     const now = new Date()
@@ -326,7 +332,7 @@ export default function AnalyticsPage() {
           <SummaryCard icon={ListTodo} label="Total Tasks" value={summary.totalTasks} color="blue" />
           <SummaryCard icon={CheckCircle2} label="Completed" value={summary.completedTasks} color="green" />
           <SummaryCard icon={AlertTriangle} label="Missed Deadlines" value={summary.missedDeadlines} color="red" />
-          <SummaryCard icon={Clock} label="Avg Completion" value={summary.avgCompletionTime} suffix="h" decimals={1} color="amber" />
+          <SummaryCard icon={Clock} label="Avg Completion" value={summary.avgCompletionTime / 60} suffix="h" decimals={1} color="amber" />
         </div>
 
         {/* Charts Row */}
@@ -462,10 +468,10 @@ export default function AnalyticsPage() {
             <h2 className="section-title mb-0">Key Statistics</h2>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={Target} label="Avg Productivity" value={stats?.avgProductivity != null ? `${Math.round(stats.avgProductivity)}%` : '--'} />
-            <StatCard icon={Calendar} label="Best Day" value={stats?.bestDay || '--'} sub={stats?.bestDate ? format(new Date(stats.bestDate), 'MMM dd') : ''} />
-            <StatCard icon={Clock} label="Most Productive Time" value={stats?.mostProductiveTime || '--'} />
-            <StatCard icon={Award} label="Current Streak" value={stats?.streak != null ? `${stats.streak} days` : '--'} />
+            <StatCard icon={Target} label="Avg Productivity" value={stats?.averageProductivity != null ? `${Math.round(stats.averageProductivity)}%` : '--'} />
+            <StatCard icon={Calendar} label="Best Day" value={stats?.bestDay ? format(new Date(stats.bestDay), 'MMM dd, yyyy') : '--'} />
+            <StatCard icon={Clock} label="Avg Focus / Day" value={stats?.averageFocusMinutes != null ? `${Math.round(stats.averageFocusMinutes)} min` : '--'} />
+            <StatCard icon={Award} label="Days Tracked" value={stats?.totalAnalyticsDays != null ? stats.totalAnalyticsDays : '--'} />
           </div>
         </motion.div>
 

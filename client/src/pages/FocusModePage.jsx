@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Play, Pause, RotateCcw, Coffee, Brain } from 'lucide-react'
+import { analyticsAPI } from '../services/api'
 
 const FOCUS_TIME = 25 * 60
 const BREAK_TIME = 5 * 60
@@ -42,6 +43,7 @@ export default function FocusModePage() {
                 localStorage.setItem('focusSessions', JSON.stringify(updated))
                 return updated
               })
+              analyticsAPI.log({ increment: true, focusSessions: 1, focusMinutes: 25 }).catch(() => {})
             }
             try {
               if (!audioRef.current) {

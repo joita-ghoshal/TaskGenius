@@ -2,18 +2,20 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
-import { User, Lock, Bell, Mic, Save, Volume2, Loader2 } from 'lucide-react'
+import { User, Lock, Mic, Save, Volume2, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { authAPI } from '../services/api'
 
 export default function SettingsPage() {
-  const { user, updateProfile, updatePassword } = useAuth()
+  const { user, updateProfile, updatePassword, loadUser } = useAuth()
   const fileInputRef = useRef(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [voiceLoading, setVoiceLoading] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [voiceMuted, setVoiceMuted] = useState(user?.voiceSettings?.muted ?? false)
-  const [voiceLang, setVoiceLang] = useState(user?.voiceSettings?.language ?? 'en')
-  const [voiceVolume, setVoiceVolume] = useState(user?.voiceSettings?.volume ?? 80)
+  const [voiceMuted, setVoiceMuted] = useState(user?.voiceMuted ?? false)
+  const [voiceLang, setVoiceLang] = useState(user?.voiceLanguage ?? 'en')
+  const [voiceVolume, setVoiceVolume] = useState(user?.voiceVolume ?? 80)
 
   const handleUploadPhoto = async (e) => {
     const file = e.target.files?.[0]
@@ -21,16 +23,19 @@ export default function SettingsPage() {
     if (file.size > 2 * 1024 * 1024) return toast.error('File must be less than 2MB')
     setUploadingPhoto(true)
     try {
-      const formData = new FormData()
-      formData.append('avatar', file)
-      const { data } = await import('../services/api').then(m => m.default.put('/auth/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      }))
-      toast.success('Photo uploaded successfully')
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = () => reject(new Error('Could not read file'))
+        reader.readAsDataURL(file)
+      })
+      await updateProfile({ avatar: dataUrl })
+      toast.success('Photo updated successfully')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to upload photo')
     } finally {
       setUploadingPhoto(false)
+      e.target.value = ''
     }
   }
 
@@ -44,8 +49,8 @@ export default function SettingsPage() {
       email: user?.email || '',
       goals: user?.goals || '',
       dailyTarget: user?.dailyTarget || 5,
-      workStart: user?.workHours?.start || '09:00',
-      workEnd: user?.workHours?.end || '17:00',
+      workStart: user?.workingHourStart || '09:00',
+      workEnd: user?.workingHourEnd || '17:00',
       preferredStudyTime: user?.preferredStudyTime || 'morning',
     },
   })
@@ -64,15 +69,29 @@ export default function SettingsPage() {
         name: data.name,
         goals: data.goals,
         dailyTarget: Number(data.dailyTarget),
-        workHours: { start: data.workStart, end: data.workEnd },
+        workingHourStart: data.workStart,
+        workingHourEnd: data.workEnd,
         preferredStudyTime: data.preferredStudyTime,
-        voiceSettings: { muted: voiceMuted, language: voiceLang, volume: voiceVolume },
       })
       toast.success('Profile updated successfully')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update profile')
     } finally {
       setProfileLoading(false)
+    }
+  }
+
+  const onVoiceSave = async (e) => {
+    e?.preventDefault()
+    setVoiceLoading(true)
+    try {
+      await authAPI.updateVoiceSettings({ muted: voiceMuted, language: voiceLang, volume: voiceVolume })
+      await loadUser()
+      toast.success('Voice settings saved')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save voice settings')
+    } finally {
+      setVoiceLoading(false)
     }
   }
 
@@ -136,9 +155,13 @@ export default function SettingsPage() {
           <form onSubmit={handleProfileSubmit(onProfileSave)} className="space-y-5">
             {/* Avatar */}
             <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-purple-500 flex items-center justify-center text-white text-xl font-bold shrink-0">
-                {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'TG'}
-              </div>
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user?.name || 'Avatar'} className="w-16 h-16 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-400 to-purple-500 flex items-center justify-center text-white text-xl font-bold shrink-0">
+                  {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'TG'}
+                </div>
+              )}
               <div>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
                 <button type="button" className="btn-secondary text-sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
@@ -234,7 +257,7 @@ export default function SettingsPage() {
 
         {/* Voice Settings */}
         <SectionCard icon={Mic} title="Voice Settings">
-          <form onSubmit={handleProfileSubmit(onProfileSave)} className="space-y-5">
+          <form onSubmit={onVoiceSave} className="space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Volume2 size={18} className="text-text-secondary" />
@@ -271,6 +294,18 @@ export default function SettingsPage() {
                 <span>0%</span>
                 <span>100%</span>
               </div>
+            </div>
+
+            <div className="pt-2">
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={voiceLoading}
+                className="btn-primary"
+              >
+                <Save size={16} className="mr-2" />
+                {voiceLoading ? 'Saving...' : 'Save Voice Settings'}
+              </motion.button>
             </div>
           </form>
         </SectionCard>

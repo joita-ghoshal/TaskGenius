@@ -1,4 +1,6 @@
 const prisma = require('../config/prisma');
+const { notify, notifyForDeadline } = require('../utils/notify');
+const { bumpAnalytics } = require('../utils/analytics');
 
 const calculateRiskLevel = (deadline) => {
   if (!deadline) return 'low';
@@ -66,6 +68,10 @@ exports.createTask = async (req, res, next) => {
     const riskLevel = calculateRiskLevel(deadlineDate);
     const completionProbability = calculateCompletionProbability(deadlineDate);
 
+    const noteList = Array.isArray(notes)
+      ? notes
+      : (notes && String(notes).trim() ? [{ content: String(notes) }] : []);
+
     const task = await prisma.task.create({
       data: {
         userId: req.user.id,
@@ -80,12 +86,14 @@ exports.createTask = async (req, res, next) => {
         subtasks: subtasks?.length > 0 ? {
           create: subtasks.map(s => ({ title: s.title || s }))
         } : undefined,
-        notes: notes?.length > 0 ? {
-          create: notes.map(n => ({ content: n.content || n }))
+        notes: noteList.length > 0 ? {
+          create: noteList.map(n => ({ content: n.content || n }))
         } : undefined
       },
       include: taskInclude
     });
+    notifyForDeadline(req.user.id, task);
+    bumpAnalytics(req.user.id, { tasksCreated: 1 });
     res.status(201).json({ success: true, task });
   } catch (error) {
     next(error);
@@ -126,11 +134,36 @@ exports.updateTask = async (req, res, next) => {
       }
     }
 
+    if (notes !== undefined) {
+      await prisma.taskNote.deleteMany({ where: { taskId: req.params.id } });
+      const noteList = Array.isArray(notes)
+        ? notes
+        : (notes ? [{ content: String(notes) }] : []);
+      if (noteList.length > 0) {
+        await prisma.taskNote.createMany({
+          data: noteList.map(n => ({ taskId: req.params.id, content: n.content || String(n) }))
+        });
+      }
+    }
+
     const task = await prisma.task.update({
       where: { id: req.params.id },
       data,
       include: taskInclude
     });
+
+    if (deadline !== undefined) notifyForDeadline(req.user.id, task);
+    if (status === 'completed') {
+      bumpAnalytics(req.user.id, { tasksCompleted: 1 });
+      notify(req.user.id, {
+        type: 'success',
+        title: 'Task completed',
+        message: `"${task.title}" marked as completed. Great work!`,
+        taskId: task.id,
+        urgency: 'low',
+        actionUrl: '/dashboard/analytics'
+      });
+    }
     res.json({ success: true, task });
   } catch (error) {
     next(error);

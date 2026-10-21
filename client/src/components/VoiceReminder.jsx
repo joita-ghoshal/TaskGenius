@@ -2,7 +2,11 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { tasksAPI } from '../services/api'
 
-const URGENCY_PRIORITY = { emergency: 4, high: 3, medium: 2, low: 1 }
+function isUrgent(task) {
+  if (!task?.deadline || task.status === 'completed') return false
+  const hoursLeft = (new Date(task.deadline) - new Date()) / 3600000
+  return hoursLeft > 0 && hoursLeft < 3
+}
 
 export default function VoiceReminder() {
   const { user } = useAuth()
@@ -24,8 +28,8 @@ export default function VoiceReminder() {
     if (!user) return
     const checkEmergencies = async () => {
       try {
-        const { data } = await tasksAPI.getAll({ isEmergency: true, status: 'pending' })
-        const emergencies = data.tasks || []
+        const { data } = await tasksAPI.getAll({ status: 'pending' })
+        const emergencies = (data.tasks || []).filter(isUrgent)
         for (const task of emergencies) {
           const key = `emergency-${task.id}`
           if (!spokenRef.current.has(key)) {

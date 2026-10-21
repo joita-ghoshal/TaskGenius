@@ -16,7 +16,7 @@ const sanitizeUser = (user) => ({
   preferredStudyTime: user.preferredStudyTime,
   voiceMuted: user.voiceMuted,
   voiceLanguage: user.voiceLanguage,
-  voiceVolume: user.voiceVolume,
+  voiceVolume: user.voiceVolume == null ? 80 : (user.voiceVolume <= 1 ? Math.round(user.voiceVolume * 100) : Math.round(user.voiceVolume)),
   createdAt: user.createdAt
 });
 

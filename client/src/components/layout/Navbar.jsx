@@ -20,14 +20,13 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const pageTitles = {
-  '/': 'Dashboard',
+  '/dashboard/settings': 'Settings',
+  '/dashboard/tasks': 'Tasks',
+  '/dashboard/calendar': 'Calendar',
+  '/dashboard/analytics': 'Analytics',
+  '/dashboard/ai-chat': 'AI Chat',
+  '/dashboard/focus': 'Focus Mode',
   '/dashboard': 'Dashboard',
-  '/tasks': 'Tasks',
-  '/calendar': 'Calendar',
-  '/analytics': 'Analytics',
-  '/ai-chat': 'AI Chat',
-  '/focus-mode': 'Focus Mode',
-  '/settings': 'Settings',
 };
 
 const typeIcons = {
@@ -210,9 +209,13 @@ export default function Navbar({ onMenuToggle }) {
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-surface-tertiary transition-all duration-200 group"
               aria-label="User menu"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                {initials}
-              </div>
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user?.name || 'User'} className="w-8 h-8 rounded-full object-cover shadow-sm" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                  {initials}
+                </div>
+              )}
               <span className="hidden lg:block text-sm font-medium text-text-primary max-w-[100px] truncate">
                 {user?.name || 'User'}
               </span>
@@ -232,7 +235,7 @@ export default function Navbar({ onMenuToggle }) {
                     <p className="text-xs text-text-tertiary truncate">{user?.email || ''}</p>
                   </div>
                   <Link
-                    to="/settings"
+                    to="/dashboard/settings"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-tertiary rounded-xl transition-all duration-200"
                   >
@@ -240,7 +243,7 @@ export default function Navbar({ onMenuToggle }) {
                     Profile
                   </Link>
                   <Link
-                    to="/settings"
+                    to="/dashboard/settings"
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-tertiary rounded-xl transition-all duration-200"
                   >

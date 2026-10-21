@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts'
 import { Clock, CheckCircle2, ListTodo, Target, Sparkles, AlertTriangle, Plus, Play, MessageSquare, TrendingUp, Calendar } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useAuth } from '../context/AuthContext'
-import { aiAPI } from '../services/api'
+import { aiAPI, analyticsAPI } from '../services/api'
+import EmergencyRescue from '../components/EmergencyRescue'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -153,11 +154,12 @@ function EmergencyAlert({ tasks, onRescue }) {
 }
 
 function TaskItem({ task, onToggle }) {
+  const isDone = task.status === 'completed'
   const badges = {
     low: 'badge-green',
     medium: 'badge-yellow',
     high: 'badge-orange',
-    urgent: 'badge-red',
+    critical: 'badge-red',
   }
   return (
     <motion.div
@@ -165,11 +167,11 @@ function TaskItem({ task, onToggle }) {
       className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-tertiary/50 transition-colors group cursor-pointer"
       onClick={() => onToggle?.(task)}
     >
-      <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${task.completed ? 'bg-accent-500 border-accent-500' : 'border-text-tertiary group-hover:border-brand-400'}`}>
-        {task.completed && <CheckCircle2 size={14} className="text-white" />}
+      <div className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${isDone ? 'bg-accent-500 border-accent-500' : 'border-text-tertiary group-hover:border-brand-400'}`}>
+        {isDone && <CheckCircle2 size={14} className="text-white" />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${task.completed ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
+        <p className={`text-sm font-medium truncate ${isDone ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
           {task.title}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
@@ -205,13 +207,14 @@ function TaskListSkeleton() {
 }
 
 export default function DashboardPage() {
-  const { dashboard, loading, error } = useDashboard()
+  const { dashboard, loading, error, refetch } = useDashboard()
   const { user } = useAuth()
-  const navigate = useNavigate()
   const [insights, setInsights] = useState([])
   const [insightsLoading, setInsightsLoading] = useState(true)
   const [insightsError, setInsightsError] = useState(null)
   const [tasks, setTasks] = useState([])
+  const [rescueTask, setRescueTask] = useState(null)
+  const [weeklyData, setWeeklyData] = useState([])
 
   const greeting = useMemo(getGreeting, [])
 
@@ -238,43 +241,61 @@ export default function DashboardPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    const fetchWeekly = async () => {
+      try {
+        const { data } = await analyticsAPI.get({ period: 'weekly' })
+        if (cancelled) return
+        const trend = data?.analytics?.productivityTrend || []
+        setWeeklyData(trend.slice(-7).map(d => ({
+          name: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+          completed: d.completed ?? 0,
+          score: d.score ?? 0,
+        })))
+      } catch { if (!cancelled) setWeeklyData([]) }
+    }
+    fetchWeekly()
+    return () => { cancelled = true }
+  }, [])
+
   const handleToggleTask = useCallback(async (task) => {
     if (!task?.id) return
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed'
     try {
       const { tasksAPI } = await import('../services/api')
-      const res = await tasksAPI.update(task.id, { completed: !task.completed })
+      const res = await tasksAPI.update(task.id, { status: newStatus })
       setTasks(prev => prev.map(t => t.id === task.id ? res.data.task : t))
+      refetch?.()
     } catch {
       // silent fail
     }
-  }, [])
+  }, [refetch])
+
+  const emergencyList = useMemo(() => {
+    const server = dashboard?.emergencyTasks || []
+    if (server.length > 0) return server
+    return (tasks || []).filter(isEmergency)
+  }, [dashboard?.emergencyTasks, tasks])
 
   const handleRescueMode = useCallback(() => {
-    const emergency = tasks?.find(isEmergency)
-    if (emergency) navigate(`/tasks/${emergency.id}`)
-  }, [tasks, navigate])
+    const emergency = emergencyList[0]
+    if (emergency) setRescueTask(emergency)
+  }, [emergencyList])
 
   const stats = useMemo(() => ({
-    todayCount: dashboard?.todayCount ?? dashboard?.todayTasks?.length ?? 0,
-    completedCount: dashboard?.completedCount ?? 0,
-    pendingCount: dashboard?.pendingCount ?? 0,
+    todayCount: dashboard?.todayTasks?.length ?? 0,
+    completedCount: dashboard?.completedToday ?? 0,
+    pendingCount: dashboard?.pendingTasks ?? 0,
     productivityScore: dashboard?.productivityScore ?? 0,
-    trend: dashboard?.trend,
   }), [dashboard])
 
   const upcomingTasks = useMemo(() => {
     const raw = dashboard?.upcomingTasks || []
-    return raw.slice(0, 5).filter(t => !t.completed)
+    return raw.slice(0, 5).filter(t => t.status !== 'completed')
   }, [dashboard?.upcomingTasks])
 
-  const weeklyData = useMemo(() => {
-    return (dashboard?.weeklyProductivity || []).slice(-7).map(d => ({
-      ...d,
-      name: new Date(d.date || d.name).toLocaleDateString('en-US', { weekday: 'short' }),
-    }))
-  }, [dashboard?.weeklyProductivity])
-
-  const quote = dashboard?.dailyQuote || 'Stay organized, stay ahead.'
+  const quote = 'Stay organized, stay ahead.'
 
   if (loading) {
     return (
@@ -329,11 +350,20 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Emergency Alert */}
-        <EmergencyAlert tasks={tasks} onRescue={handleRescueMode} />
+        <EmergencyAlert tasks={emergencyList} onRescue={handleRescueMode} />
+
+        {/* Emergency Rescue Modal */}
+        {rescueTask && (
+          <EmergencyRescue
+            task={rescueTask}
+            onClose={() => setRescueTask(null)}
+            onComplete={() => { setRescueTask(null); refetch?.() }}
+          />
+        )}
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={ListTodo} label="Today's Tasks" value={stats.todayCount} trend={stats.trend} color="blue" />
+          <StatCard icon={ListTodo} label="Today's Tasks" value={stats.todayCount} color="blue" />
           <StatCard icon={CheckCircle2} label="Completed" value={stats.completedCount} color="green" />
           <StatCard icon={Clock} label="Pending" value={stats.pendingCount} color="amber" />
           <StatCard icon={Target} label="Productivity Score" color="purple">
@@ -416,7 +446,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-text-primary font-medium mb-1">All clear!</p>
                 <p className="text-text-tertiary text-sm mb-4">No tasks scheduled for today</p>
-                <Link to="/tasks/new" className="btn-primary inline-flex">
+                <Link to="/dashboard/tasks?create=true" className="btn-primary inline-flex">
                   <Plus size={16} className="mr-1.5" />
                   Create Task
                 </Link>
@@ -473,7 +503,7 @@ export default function DashboardPage() {
             <h2 className="section-title mb-4">Quick Actions</h2>
             <div className="space-y-3">
               <Link
-                to="/tasks/new"
+                to="/dashboard/tasks?create=true"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-gradient-to-r from-brand-50 to-brand-100/50 hover:from-brand-100 hover:to-brand-200/50 border border-brand-200/50 transition-all duration-200 group"
               >
                 <div className="p-2 rounded-lg bg-brand-500 text-white">
@@ -485,7 +515,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
               <Link
-                to="/focus"
+                to="/dashboard/focus"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-gradient-to-r from-accent-50 to-accent-100/50 hover:from-accent-100 hover:to-accent-200/50 border border-accent-200/50 transition-all duration-200 group"
               >
                 <div className="p-2 rounded-lg bg-accent-500 text-white">
@@ -497,7 +527,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
               <Link
-                to="/ai-chat"
+                to="/dashboard/ai-chat"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-gradient-to-r from-purple-50 to-purple-100/50 hover:from-purple-100 hover:to-purple-200/50 border border-purple-200/50 transition-all duration-200 group"
               >
                 <div className="p-2 rounded-lg bg-purple-500 text-white">

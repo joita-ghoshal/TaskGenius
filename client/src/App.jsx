@@ -15,6 +15,7 @@ const FocusModePage = lazy(() => import('./pages/FocusModePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const TermsPage = lazy(() => import('./pages/TermsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function LoadingFallback() {
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
         <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
           <Route index element={<DashboardPage />} />
           <Route path="tasks" element={<TasksPage />} />
