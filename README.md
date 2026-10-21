@@ -256,7 +256,10 @@ An automated test suite is on the roadmap; current verification is done through 
 | Frontend | **Vercel** | `client/vercel.json` — Vite build with SPA rewrite |
 | Database | **Supabase** (PostgreSQL) | Connection string via `DATABASE_URL` |
 
-**Deployed URLs:** a public live deployment is not yet published. Deployment configuration for both platforms is complete and ready to connect.
+**Deployed URLs (verified October 2026):**
+
+- Frontend: <https://taskgenius-lovat.vercel.app>
+- Backend API: <https://taskgenius-api-ok6d.onrender.com> (health: `/api/health`)
 
 To deploy:
 
@@ -268,15 +271,24 @@ To deploy:
 
 ## Project Status
 
-TaskGenius is in **active development**. The backend API (auth, tasks, AI chat, notifications, analytics) and the full frontend UI are implemented and functional, with a complete PostgreSQL schema and deployment configuration for Render and Vercel.
+TaskGenius is in **active development** and deployed in production. The backend API (auth, tasks, AI chat, notifications, analytics) and the full frontend UI are implemented and functional, with a complete PostgreSQL schema and live deployments on Render and Vercel.
 
-**Currently being worked on:**
+**Recently completed:**
 
-- Fixing internal navigation paths so every sidebar and dashboard link resolves correctly
-- Reconciling dashboard and analytics data shapes between client and server
-- Wiring the Emergency Rescue modal into the live dashboard trigger
-- Activating the notification-generation and analytics-logging pipelines
-- Email delivery for the password-reset flow
+- All internal navigation paths resolve; Navbar search and Calendar "create task" drive the Tasks page
+- Dashboard and Analytics reconciled with real server data (counts, trends, categories, CSV export)
+- Emergency Rescue modal wired into the live dashboard trigger
+- Server-side notification generation and analytics logging (tasks, deadlines, focus sessions)
+- Task notes round-trip safely; settings (work hours, voice, avatar) persist
+- AI chat updated to a current Gemini model with automatic fallback; saved-session sidebar works
+- Working database seed script (`npm run seed`)
+
+**Still being worked on:**
+
+- Missed-deadline status computation and weekly/nightly analytics rollups
+- LLM-powered daily briefing and insights (currently rule-based)
+- Email delivery for the password-reset flow (an in-app reset link is shown until then)
+- Browser push notifications and automated tests/CI
 
 An updated roadmap lives below; detailed technical tracking is maintained internally as development continues.
 
@@ -286,17 +298,17 @@ An updated roadmap lives below; detailed technical tracking is maintained intern
 
 **Short term**
 
-- Repair all internal navigation routes
-- Mount the Emergency Red Alert modal on the live dashboard with background deadline monitoring
-- Server-side notification generation and analytics logging
-- Email-based password reset
+- Missed-deadline detection and nightly analytics rollups
+- LLM-powered daily briefing, insights, and task analysis (replacing deterministic templates)
+- Email-based password reset (in-app reset link today)
+- Browser push notifications via service worker
 
 **Medium term**
 
-- LLM-powered daily briefing, insights, and task analysis (replacing deterministic templates)
-- Browser push notifications via service worker
-- Task detail pages and in-calendar task creation
 - Automated test suite and CI
+- Task detail pages and richer in-calendar scheduling
+- Voice settings honored by speech alerts and chat TTS
+- Avatar object storage with server-side validation
 
 **Long term**
 
