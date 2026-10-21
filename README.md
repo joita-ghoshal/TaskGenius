@@ -2,584 +2,335 @@
 
 > **Don't Just Remind. Rescue.**
 
-TaskGenius is a production-ready, AI-powered productivity companion that doesn't just send reminders—it proactively helps users complete their tasks before deadlines. Built with a premium SaaS-grade UI/UX, it features an intelligent AI coach, emergency rescue mode, voice assistant, and comprehensive task management.
+TaskGenius is an AI-powered productivity and intelligent deadline-management platform. It combines a fast, modern task manager with a context-aware AI coach, deadline-risk analysis, and an escalating "rescue" concept for work that is about to slip — delivered through a polished, light-themed, fully responsive web interface.
 
 ---
 
-## Features
+## Table of Contents
 
-### AI-Powered
-- **AI Chat Assistant** - Conversational AI that acts as a personal productivity coach
-- **Smart Task Analysis** - Automatic task priority, risk, and deadline analysis
-- **Daily Briefing** - AI-generated morning briefings with personalized recommendations
-- **AI Insights** - Proactive insights about productivity patterns and risks
-- **Emergency Rescue** - AI-generated step-by-step action plans for critical deadlines
-- **Voice Assistant** - Speech-to-text and text-to-speech with Bengali/English support
-
-### Task Management
-- Create, edit, delete, and complete tasks
-- Priority levels: Low, Medium, High, Critical
-- Categories, deadlines, estimated duration
-- Subtasks, notes, and attachments
-- Smart filtering and search
-- Calendar view (Monthly/Weekly/Daily)
-
-### Emergency Rescue Mode
-- **Full-screen red alert** when deadlines are critically close
-- **Animated countdown timer** with alarm sounds
-- **AI emergency action plan** for last-minute rescue
-- **Browser notifications** and auto-refresh
-- "I'm Done" completion tracking
-
-### Analytics
-- Productivity charts and trends
-- Completion rates and missed deadlines
-- Category breakdown
-- Weekly and monthly reports
-- Focus session tracking
-
-### Focus Mode
-- Pomodoro timer (25 min focus / 5 min break)
-- Session tracking
-- Productive time analytics
-
-### Authentication
-- JWT-based authentication
-- Register, Login, Profile management
-- Password update
-- Voice settings customization
-
-### UI/UX
-- Premium glassmorphism design
-- White/Soft Gray/Light Blue theme
-- Framer Motion animations
-- Fully responsive (Mobile/Tablet/Desktop)
-- Skeleton loading states
-- Empty states and error pages
-- Toast notifications
+- [Project Overview](#project-overview)
+- [Problem Statement](#problem-statement)
+- [Core Features](#core-features)
+- [AI-Powered Capabilities](#ai-powered-capabilities)
+- [Emergency Rescue Mode](#emergency-rescue-mode)
+- [Technology Stack](#technology-stack)
+- [System Architecture Overview](#system-architecture-overview)
+- [Installation](#installation)
+- [Environment Setup](#environment-setup)
+- [Local Development](#local-development)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Project Status](#project-status)
+- [Roadmap](#roadmap)
+- [Project Ownership & Credits](#project-ownership--credits)
+- [License](#license)
 
 ---
 
-## Tech Stack
+## Project Overview
+
+TaskGenius addresses a gap that traditional reminder and task apps leave open: they tell you something is due, but they don't help you **recover** when a deadline is already close. TaskGenius scores each task's deadline risk, provides an AI productivity coach that knows your actual workload, tracks focus and productivity analytics, and escalates critically late tasks through voice alerts and a full-screen Emergency Rescue Mode with a countdown, alarm, and one-click completion path.
+
+Built as a full-stack web application — a React single-page app talking to an Express REST API backed by PostgreSQL — it is designed for students and professionals juggling many overlapping deadlines.
+
+### Problem Statement
+
+Passive reminders get dismissed, and the work still slips. Users need a tool that:
+
+1. Assesses how risky a deadline actually is, not just when it fires a reminder.
+2. Explains *why* a task is at risk based on the user's real workload.
+3. Escalates with an actionable recovery plan when a deadline becomes critical.
+
+TaskGenius is built around that rescue loop: **risk-scored tasks → contextual AI coaching → escalating alerts → one-click recovery**.
+
+---
+
+## Core Features
+
+| Area | What's included |
+| --- | --- |
+| **Task Management** | Create, edit, delete, and complete tasks; priority levels (Low / Medium / High / Critical); categories; deadlines; estimated duration; subtasks; automatic risk level and completion-probability scoring at creation |
+| **Search & Filtering** | Client-side search, status/priority/category filters, and four sort orders |
+| **Calendar** | Monthly, Weekly, and Daily views of your tasks |
+| **Dashboard** | Aggregated today/upcoming/completed stats, productivity score, critical-task banner, category breakdown |
+| **Authentication** | JWT-based register, login, logout; profile management; password change; password reset flow |
+| **Focus Mode** | Pomodoro timer (25 min focus / 5 min break) with session tracking and a completion chime |
+| **Analytics** | Productivity charts, completion trends, category breakdown, stats panel, CSV report export |
+| **Notifications** | In-app notification centre with unread badge, polling, and mark-all-read |
+| **Voice** | Speech-to-text and text-to-speech in the AI chat (Web Speech API); spoken task alerts |
+| **UI/UX** | Light-theme glassmorphism design, Framer Motion page transitions, skeleton loaders, empty states, toasts, fully responsive (mobile / tablet / desktop) |
+
+---
+
+## AI-Powered Capabilities
+
+- **AI Chat Assistant** — a conversational productivity coach powered by Google Gemini (`gemini-2.0-flash`). The system prompt is built server-side from your real tasks and productivity data, so its advice reflects your actual workload. Full conversation history is persisted.
+- **Smart Task Analysis** — every task receives a deterministic risk level (Critical / High / Medium / Low) and a completion-probability estimate based on deadline proximity and estimated duration.
+- **AI Insights** — proactive productivity observations surfaced on the dashboard (overdue workload, daily load, completion trends).
+- **Daily Briefing** — a structured daily summary generated from your task data.
+- **Voice Conversations** — dictate messages with speech recognition and hear replies spoken back, with per-message replay controls.
+
+---
+
+## Emergency Rescue Mode
+
+TaskGenius's signature concept: when a deadline becomes critically close, the system escalates beyond ordinary reminders.
+
+- **Critical-task detection** — the dashboard flags tasks due within hours and surfaces them in a red emergency banner.
+- **Full-screen Red Alert modal** — a dedicated rescue interface with an animated countdown timer, progress bar, and WebAudio alarm sound.
+- **AI rescue plan** — a step-by-step action plan generated for the at-risk task.
+- **"I'm Done" completion** — one click completes the task directly from the emergency screen.
+- **Spoken alerts** — text-to-speech announcements for urgent pending tasks, respecting the user's mute and volume preferences.
+
+> **Development note:** the Emergency Rescue modal and voice-alert components are fully implemented; wiring them into the live dashboard trigger and adding background deadline monitoring are the next development priorities. See [Project Status](#project-status).
+
+---
+
+## Technology Stack
 
 ### Frontend
+
 | Technology | Purpose |
-|-----------|---------|
-| React 19 | UI Framework |
-| Vite | Build Tool |
-| Tailwind CSS v4 | Styling |
-| Framer Motion | Animations |
-| React Router | Routing |
-| Axios | HTTP Client |
-| React Hook Form | Form Validation |
-| React Hot Toast | Notifications |
-| Recharts | Charts |
+| --- | --- |
+| React 19 | UI framework |
+| Vite | Build tool and dev server |
+| Tailwind CSS v4 | Utility-first styling and design tokens |
+| React Router | Client-side routing with protected routes |
+| Axios | HTTP client with automatic auth interceptors |
+| Framer Motion | Animations and page transitions |
+| Recharts | Analytics charts |
 | Lucide React | Icons |
-| date-fns | Date Utilities |
+| date-fns | Date utilities |
+| React Hot Toast | Toast notifications |
+| Web Speech API | Speech-to-text and text-to-speech |
 
 ### Backend
+
 | Technology | Purpose |
-|-----------|---------|
+| --- | --- |
 | Node.js | Runtime |
-| Express.js | Web Framework |
-| MongoDB | Database |
-| Mongoose | ODM |
-| JWT | Authentication |
-| bcryptjs | Password Hashing |
-| Helmet | Security Headers |
-| CORS | Cross-Origin Resource Sharing |
-| Morgan | Logging |
-| express-rate-limit | Rate Limiting |
-| express-validator | Input Validation |
+| Express.js | REST framework |
+| PostgreSQL | Database |
+| Prisma | ORM and schema management |
+| JSON Web Tokens | Authentication |
+| bcryptjs | Password hashing (cost factor 12) |
+| Helmet | Security headers |
+| CORS | Cross-origin configuration |
+| express-rate-limit | API rate limiting |
+| express-validator | Request validation |
+| Morgan | Request logging |
 
 ### AI
+
 | Technology | Purpose |
-|-----------|---------|
-| Google Gemini API | AI Chat & Analysis |
-| Web Speech API | Voice Recognition |
-| Speech Synthesis API | Voice Output |
+| --- | --- |
+| Google Gemini API (`gemini-2.0-flash`) | AI chat, task context, and analysis |
 
 ---
 
-## Database Selection: MongoDB
-
-After careful analysis, **MongoDB** was selected as the database for TaskGenius. Here's the reasoning:
-
-### Why MongoDB?
-
-1. **Flexible Schema**: AI chat history, notifications, and analytics data vary in structure. MongoDB's document model handles this naturally without migrations.
-
-2. **Scalability**: TaskGenius will grow with each user creating hundreds of tasks, AI interactions, and analytics records. MongoDB's horizontal scaling via sharding is ideal.
-
-3. **Performance**: Document-based storage allows embedding related data (subtasks, notes within tasks) reducing JOIN operations.
-
-4. **AI Data**: AI conversation history and insights have varying structures. MongoDB's flexible schema is perfect for storing unstructured AI response data.
-
-5. **JSON-like Documents**: Natural mapping between Node.js objects and database documents, reducing impedance mismatch.
-
-6. **MongoDB Atlas**: Managed cloud service with built-in backups, monitoring, and auto-scaling for production deployment.
-
-### Data Collections
-- **Users** - User profiles and authentication
-- **Tasks** - Task management with embedded subtasks and notes
-- **Notifications** - User notifications with varying types
-- **AiHistory** - AI conversation history with flexible metadata
-- **Analytics** - Daily productivity analytics
-
----
-
-## Project Structure
+## System Architecture Overview
 
 ```
-taskgenius/
-├── client/                          # React Frontend
-│   ├── public/
-│   │   ├── favicon.svg
-│   │   └── manifest.json
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── AppLayout.jsx
-│   │   │   │   ├── Navbar.jsx
-│   │   │   │   └── Sidebar.jsx
-│   │   │   └── EmergencyRescue.jsx
-│   │   ├── pages/
-│   │   │   ├── LandingPage.jsx
-│   │   │   ├── LoginPage.jsx
-│   │   │   ├── RegisterPage.jsx
-│   │   │   ├── DashboardPage.jsx
-│   │   │   ├── TasksPage.jsx
-│   │   │   ├── AiChatPage.jsx
-│   │   │   ├── CalendarPage.jsx
-│   │   │   ├── AnalyticsPage.jsx
-│   │   │   ├── FocusModePage.jsx
-│   │   │   ├── SettingsPage.jsx
-│   │   │   └── NotFoundPage.jsx
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx
-│   │   ├── hooks/
-│   │   │   ├── useDashboard.js
-│   │   │   ├── useNotifications.js
-│   │   │   └── useTasks.js
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── styles/
-│   │   │   └── index.css
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-├── server/                          # Express Backend
-│   ├── config/
-│   │   └── db.js
-│   ├── controllers/
-│   │   ├── aiController.js
-│   │   ├── analyticsController.js
-│   │   ├── authController.js
-│   │   ├── notificationController.js
-│   │   └── taskController.js
-│   ├── middleware/
-│   │   ├── auth.js
-│   │   ├── errorHandler.js
-│   │   └── validate.js
-│   ├── models/
-│   │   ├── AiHistory.js
-│   │   ├── Analytics.js
-│   │   ├── Notification.js
-│   │   ├── Task.js
-│   │   └── User.js
-│   ├── routes/
-│   │   ├── ai.js
-│   │   ├── analytics.js
-│   │   ├── auth.js
-│   │   ├── notifications.js
-│   │   └── tasks.js
-│   ├── utils/
-│   │   └── helpers.js
-│   ├── server.js
-│   ├── .env.example
-│   └── package.json
-├── .gitignore
-└── README.md
+┌─────────────────────────────┐        ┌──────────────────────────────┐        ┌──────────────┐
+│  React SPA (Vercel)         │  REST  │  Express API (Render)        │  Prisma│  PostgreSQL  │
+│  Pages · Hooks · AuthContext│ ─────► │  Routes → Controllers        │ ─────► │  (Supabase)  │
+│  Axios Bearer interceptors  │  JSON  │  JWT auth · Gemini · Rate    │        │              │
+└─────────────────────────────┘        └──────────────────────────────┘        └──────────────┘
 ```
+
+- **Frontend → Backend:** the SPA communicates with the REST API over JSON; an Axios interceptor attaches the JWT from local storage and handles 401 responses.
+- **Backend → Database:** all controllers use a shared Prisma client; every query is scoped to the authenticated user's ID.
+- **Authentication:** stateless JWT (Bearer header) with bcrypt-hashed passwords.
+- **AI flow:** `/api/ai/chat` loads the user's tasks and analytics, builds a contextual system prompt, calls Gemini, and persists the exchange to the database.
+- **Health check:** `GET /api/health` performs a live database query and reports connectivity.
 
 ---
 
-## Installation Guide
+## Installation
 
 ### Prerequisites
-- Node.js >= 18
-- MongoDB (local or Atlas)
-- Gemini API Key
 
-### 1. Clone the Repository
+- **Node.js ≥ 18**
+- **PostgreSQL** database (a free [Supabase](https://supabase.com) project works well)
+- **Google Gemini API key** ([Google AI Studio](https://aistudio.google.com/apikey))
+
+### Clone & install
 
 ```bash
-git clone https://github.com/yourusername/taskgenius.git
-cd taskgenius
+git clone https://github.com/joita-ghoshal/TaskGenius.git
+cd TaskGenius
+
+# Backend dependencies
+cd server && npm install
+
+# Frontend dependencies
+cd ../client && npm install
 ```
 
-### 2. Backend Setup
+---
+
+## Environment Setup
+
+### Backend — `server/.env`
+
+Copy the template and fill in your values:
+
+```bash
+cp server/.env.example server/.env
+```
+
+| Variable | Description |
+| --- | --- |
+| `PORT` | API port (default `5000`) |
+| `NODE_ENV` | `development` or `production` |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Secret for signing JWTs |
+| `JWT_EXPIRE` | Token lifetime (e.g. `7d`) |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `CLIENT_URL` | Frontend origin for CORS (e.g. `http://localhost:5173`) |
+
+> Never commit `.env` files. They are git-ignored.
+
+### Frontend — `client/.env`
+
+```bash
+VITE_API_URL=http://localhost:5000/api
+```
+
+If unset, the client falls back to `/api` and relies on the Vite dev proxy.
+
+### Database schema
 
 ```bash
 cd server
-npm install
-cp .env.example .env
+npx prisma generate
+npx prisma db push
 ```
 
-Edit `.env` with your configuration:
+---
 
-```env
-PORT=5000
-NODE_ENV=development
-MONGO_URI=mongodb://localhost:27017/taskgenius
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRE=7d
-GEMINI_API_KEY=your-gemini-api-key
-CLIENT_URL=http://localhost:5173
-```
+## Local Development
 
-### 3. Frontend Setup
+Run the API and the SPA in two terminals:
 
 ```bash
-cd client
-npm install
-```
-
-### 4. Run Development
-
-```bash
-# Terminal 1: Backend
+# Terminal 1 — API on http://localhost:5000
 cd server
-npm run dev
+npm run dev        # nodemon auto-reload
 
-# Terminal 2: Frontend
+# Terminal 2 — SPA on http://localhost:5173 (proxies /api → :5000)
 cd client
 npm run dev
 ```
 
-Frontend: http://localhost:5173
-Backend API: http://localhost:5000/api
+Open **http://localhost:5173**, register an account, and start creating tasks.
+
+Useful backend scripts:
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start API with nodemon |
+| `npm start` | Start API (production) |
+| `npm run db:push` | Sync Prisma schema to the database |
+| `npm run db:studio` | Open Prisma Studio (database GUI) |
 
 ---
 
-## API Documentation
+## Testing
 
-### Authentication
-
-#### Register
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123"
-}
+```bash
+cd client
+npm run lint       # oxlint static analysis
+npm run build      # production build verification
 ```
 
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-#### Get Current User
-```http
-GET /api/auth/me
-Authorization: Bearer <token>
-```
-
-#### Update Profile
-```http
-PUT /api/auth/profile
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "John Updated",
-  "goals": "Complete 5 tasks daily",
-  "dailyTarget": 5
-}
-```
-
-#### Update Password
-```http
-PUT /api/auth/password
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "currentPassword": "oldpass",
-  "newPassword": "newpass123"
-}
-```
-
-#### Update Voice Settings
-```http
-PUT /api/auth/voice-settings
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "muted": false,
-  "language": "en",
-  "volume": 1
-}
-```
-
-### Tasks
-
-#### Get All Tasks
-```http
-GET /api/tasks?status=pending&priority=high&category=work&search=assignment&sort=deadline
-Authorization: Bearer <token>
-```
-
-#### Get Dashboard
-```http
-GET /api/tasks/dashboard
-Authorization: Bearer <token>
-```
-
-#### Get Single Task
-```http
-GET /api/tasks/:id
-Authorization: Bearer <token>
-```
-
-#### Create Task
-```http
-POST /api/tasks
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "title": "Complete Project Report",
-  "description": "Write the final report",
-  "priority": "high",
-  "category": "work",
-  "deadline": "2024-12-31T23:59:00.000Z",
-  "estimatedDuration": 120,
-  "subtasks": [
-    { "title": "Research" },
-    { "title": "Draft" }
-  ]
-}
-```
-
-#### Update Task
-```http
-PUT /api/tasks/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "status": "completed",
-  "priority": "critical"
-}
-```
-
-#### Delete Task
-```http
-DELETE /api/tasks/:id
-Authorization: Bearer <token>
-```
-
-### AI Features
-
-#### Chat with AI
-```http
-POST /api/ai/chat
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "message": "What should I do today?",
-  "sessionId": "session-123"
-}
-```
-
-#### Get Daily Briefing
-```http
-GET /api/ai/briefing
-Authorization: Bearer <token>
-```
-
-#### Get AI Insights
-```http
-GET /api/ai/insights
-Authorization: Bearer <token>
-```
-
-#### Analyze Task
-```http
-GET /api/ai/analyze/:taskId
-Authorization: Bearer <token>
-```
-
-#### Get Chat History
-```http
-GET /api/ai/history?sessionId=session-123
-Authorization: Bearer <token>
-```
-
-#### Clear History
-```http
-DELETE /api/ai/history
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "sessionId": "session-123"
-}
-```
-
-### Notifications
-
-#### Get Notifications
-```http
-GET /api/notifications?read=false&limit=10
-Authorization: Bearer <token>
-```
-
-#### Get Unread Count
-```http
-GET /api/notifications/unread-count
-Authorization: Bearer <token>
-```
-
-#### Mark as Read
-```http
-PUT /api/notifications/:id/read
-Authorization: Bearer <token>
-```
-
-#### Mark All as Read
-```http
-PUT /api/notifications/read-all
-Authorization: Bearer <token>
-```
-
-#### Delete Notification
-```http
-DELETE /api/notifications/:id
-Authorization: Bearer <token>
-```
-
-### Analytics
-
-#### Get Analytics
-```http
-GET /api/analytics?period=weekly
-Authorization: Bearer <token>
-```
-
-#### Get Productivity Stats
-```http
-GET /api/analytics/stats
-Authorization: Bearer <token>
-```
-
-### Health Check
-
-```http
-GET /api/health
-```
+An automated test suite is on the roadmap; current verification is done through linting, production builds, and manual smoke testing of the full auth → task → AI → analytics flow.
 
 ---
 
-## Deployment Guide
+## Deployment
 
-### Backend (Render)
+| Piece | Platform | Configuration |
+| --- | --- | --- |
+| Backend | **Render** | `render.yaml` — build: install + `prisma generate` + `prisma db push`; start: `node server.js` |
+| Frontend | **Vercel** | `client/vercel.json` — Vite build with SPA rewrite |
+| Database | **Supabase** (PostgreSQL) | Connection string via `DATABASE_URL` |
 
-1. Create a new Web Service on Render
-2. Connect your repository
-3. Configure:
-   - **Root Directory**: `server`
-   - **Build Command**: `npm install`
-   - **Start Command**: `node server.js`
-4. Add Environment Variables:
-   - `MONGO_URI`
-   - `JWT_SECRET`
-   - `GEMINI_API_KEY`
-   - `CLIENT_URL` (your Vercel frontend URL)
-   - `NODE_ENV=production`
+**Deployed URLs:** a public live deployment is not yet published. Deployment configuration for both platforms is complete and ready to connect.
 
-### Frontend (Vercel)
+To deploy:
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Deploy:
-   ```bash
-   cd client
-   vercel --prod
-   ```
-3. Configure Environment Variables:
-   - `VITE_API_URL` = your Render backend URL
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PORT` | No | Server port (default: 5000) |
-| `NODE_ENV` | No | Environment mode |
-| `MONGO_URI` | Yes | MongoDB connection string |
-| `JWT_SECRET` | Yes | JWT signing secret |
-| `JWT_EXPIRE` | No | Token expiry (default: 7d) |
-| `GEMINI_API_KEY` | Yes | Google Gemini API key |
-| `CLIENT_URL` | Yes | Frontend URL for CORS |
-| `VITE_API_URL` | Yes | Backend API URL (frontend) |
+1. Create the Render web service from `render.yaml` and set `DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, and `CLIENT_URL` (your final frontend origin) in the dashboard.
+2. Deploy `client/` to Vercel and set `VITE_API_URL` to your API origin + `/api`.
+3. Verify `GET <api-origin>/api/health` returns `"database": "connected"`.
 
 ---
 
-## Voice Assistant
+## Project Status
 
-TaskGenius features a built-in voice assistant using the Web Speech API.
+TaskGenius is in **active development**. The backend API (auth, tasks, AI chat, notifications, analytics) and the full frontend UI are implemented and functional, with a complete PostgreSQL schema and deployment configuration for Render and Vercel.
 
-### Features
-- **Speech-to-Text**: Speak your questions to the AI assistant
-- **Text-to-Speech**: AI responses are read aloud naturally
-- **Multilingual**: Supports English and Bengali
-- **Emergency Voice Alerts**: AI announces critical deadline warnings
-- **Mute/Snooze**: Control voice notifications
+**Currently being worked on:**
 
-### Usage
-- Click the microphone icon in the AI Chat to start voice input
-- Toggle voice responses with the speaker icon
-- Configure voice settings in Profile > Voice Settings
+- Fixing internal navigation paths so every sidebar and dashboard link resolves correctly
+- Reconciling dashboard and analytics data shapes between client and server
+- Wiring the Emergency Rescue modal into the live dashboard trigger
+- Activating the notification-generation and analytics-logging pipelines
+- Email delivery for the password-reset flow
+
+An updated roadmap lives below; detailed technical tracking is maintained internally as development continues.
 
 ---
 
-## Color Theme
+## Roadmap
 
-| Color | Usage |
-|-------|-------|
-| `#ffffff` | Surface / Cards |
-| `#f8fafc` | Page Background |
-| `#f1f5f9` | Hover / Tertiary |
-| `#2563eb` | Primary Brand |
-| `#1d4ed8` | Primary Dark |
-| `#0f172a` | Primary Text |
-| `#475569` | Secondary Text |
-| `#22c55e` | Success / Completed |
-| `#ef4444` | Danger / Emergency |
-| `#f59e0b` | Warning |
+**Short term**
+
+- Repair all internal navigation routes
+- Mount the Emergency Red Alert modal on the live dashboard with background deadline monitoring
+- Server-side notification generation and analytics logging
+- Email-based password reset
+
+**Medium term**
+
+- LLM-powered daily briefing, insights, and task analysis (replacing deterministic templates)
+- Browser push notifications via service worker
+- Task detail pages and in-calendar task creation
+- Automated test suite and CI
+
+**Long term**
+
+- Learned personal completion-time models
+- Smart scheduling into free calendar slots
+- Team/shared deadlines and mobile PWA install
+- Email/SMS escalation tiers
+
+---
+
+## Project Ownership & Credits
+
+| | |
+| --- | --- |
+| **Created & Developed By** | **Joita Ghoshal** |
+| **Project Owner** | **Joita Ghoshal** |
+| **Authorized By** | **Joita Ghoshal** |
+| **University** | Brainware University, West Bengal, India |
+| **Department** | Computer Science and Engineering (CSE Core) |
+| **Degree** | Bachelor of Technology (B.Tech) |
+| **Academic Year** | Second Year |
+| **Batch** | 2025–2029 |
+
+**Repository:** [github.com/joita-ghoshal/TaskGenius](https://github.com/joita-ghoshal/TaskGenius)
 
 ---
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
 
 ---
 
-## Support
-
-For support, please open an issue on the GitHub repository or contact the development team.
+<p align="center">
+  <b>TaskGenius</b> — Don't Just Remind. Rescue.<br/>
+  Built by Joita Ghoshal · Brainware University · B.Tech CSE (2025–2029)
+</p>

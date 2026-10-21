@@ -10,3 +10,6 @@ coverage/
 .vercel
 prisma/migrations/0_init/migration.sql
 client/.env.vercel
+
+# Private project knowledge base — NEVER commit or push (local-only development memory)
+project.md
