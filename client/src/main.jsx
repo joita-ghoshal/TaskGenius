@@ -5,6 +5,9 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import App from './App';
 import './styles/index.css';
+import { registerServiceWorker } from './utils/push';
+
+registerServiceWorker().catch(() => {});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
       const { data } = await authAPI.forgotPassword({ email });
       setResetUrl(data.resetUrl || '');
       setSent(true);
-      toast.success(data.resetUrl ? 'Reset link ready' : 'Password reset link sent to your email');
+      toast.success(data.message || (data.resetUrl ? 'Reset link ready' : 'If an account exists, a password reset link has been sent'));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send reset link');
     } finally {
@@ -49,9 +49,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center">
               <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
               <p className="text-gray-600 text-sm mb-4">
-                {resetUrl
-                  ? 'Your password reset link is ready. It expires in 1 hour.'
-                  : 'If an account exists with that email, you will receive a password reset link shortly.'}
+                If an account exists with that email, you will receive a password reset link shortly. It expires in 1 hour.
               </p>
               {resetUrl && (
                 <a

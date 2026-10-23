@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
-import { User, Lock, Mic, Save, Volume2, Loader2 } from 'lucide-react'
+import { User, Lock, Mic, Save, Volume2, Loader2, Bell, BellOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { authAPI } from '../services/api'
+import { getPushStatus, subscribeToPush, unsubscribeFromPush, isPushSupported } from '../utils/push'
 
 export default function SettingsPage() {
   const { user, updateProfile, updatePassword, loadUser } = useAuth()
@@ -16,6 +17,9 @@ export default function SettingsPage() {
   const [voiceMuted, setVoiceMuted] = useState(user?.voiceMuted ?? false)
   const [voiceLang, setVoiceLang] = useState(user?.voiceLanguage ?? 'en')
   const [voiceVolume, setVoiceVolume] = useState(user?.voiceVolume ?? 80)
+  const [pushSupported, setPushSupported] = useState(isPushSupported())
+  const [pushStatus, setPushStatus] = useState({ subscribed: false, permission: 'default', configured: true })
+  const [pushLoading, setPushLoading] = useState(false)
 
   const handleUploadPhoto = async (e) => {
     const file = e.target.files?.[0]
@@ -109,6 +113,39 @@ export default function SettingsPage() {
       toast.error(err.response?.data?.message || 'Failed to update password')
     } finally {
       setPasswordLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const loadPush = async () => {
+      if (!pushSupported) return
+      try {
+        const status = await getPushStatus()
+        if (!cancelled) setPushStatus(status)
+      } catch {}
+    }
+    loadPush()
+    return () => { cancelled = true }
+  }, [pushSupported])
+
+  const togglePush = async () => {
+    setPushLoading(true)
+    try {
+      if (pushStatus.subscribed) {
+        await unsubscribeFromPush()
+        setPushStatus((prev) => ({ ...prev, subscribed: false }))
+        toast.success('Push notifications disabled')
+      } else {
+        await subscribeToPush()
+        const status = await getPushStatus()
+        setPushStatus(status)
+        toast.success('Push notifications enabled')
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to update push settings')
+    } finally {
+      setPushLoading(false)
     }
   }
 
@@ -253,6 +290,38 @@ export default function SettingsPage() {
               </motion.button>
             </div>
           </form>
+        </SectionCard>
+
+        {/* Push Notifications */}
+        <SectionCard icon={Bell} title="Notifications">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {pushStatus.subscribed ? <Bell size={18} className="text-brand-600" /> : <BellOff size={18} className="text-text-secondary" />}
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Browser Push Notifications</p>
+                  <p className="text-xs text-text-tertiary">
+                    {!pushSupported && 'Push is not supported in this browser.'}
+                    {pushSupported && pushStatus.permission === 'denied' && 'Notifications are blocked in browser settings.'}
+                    {pushSupported && pushStatus.permission !== 'denied' && !pushStatus.configured && 'Push is not configured on the server.'}
+                    {pushSupported && pushStatus.permission !== 'denied' && pushStatus.configured && (pushStatus.subscribed ? 'Enabled for deadline reminders and alerts.' : 'Get reminders for upcoming and overdue deadlines.')}
+                  </p>
+                </div>
+              </div>
+              {pushSupported && pushStatus.configured && pushStatus.permission !== 'denied' ? (
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  disabled={pushLoading}
+                  onClick={togglePush}
+                  className={pushStatus.subscribed ? 'btn-secondary' : 'btn-primary'}
+                >
+                  {pushLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                  {pushLoading ? 'Updating...' : pushStatus.subscribed ? 'Disable' : 'Enable'}
+                </motion.button>
+              ) : null}
+            </div>
+          </div>
         </SectionCard>
 
         {/* Voice Settings */}

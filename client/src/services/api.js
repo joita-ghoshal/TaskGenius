@@ -64,7 +64,12 @@ export const notificationsAPI = {
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/read-all'),
   delete: (id) => api.delete(`/notifications/${id}`),
-  create: (data) => api.post('/notifications', data)
+  create: (data) => api.post('/notifications', data),
+  getPushKey: () => api.get('/notifications/push/key'),
+  getPushStatus: () => api.get('/notifications/push/status'),
+  subscribePush: (subscription) => api.post('/notifications/push/subscribe', subscription),
+  unsubscribePush: (data) => api.post('/notifications/push/unsubscribe', data),
+  testPush: () => api.post('/notifications/push/test')
 };
 
 export const analyticsAPI = {
