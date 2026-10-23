@@ -9,9 +9,6 @@ import {
   Bot,
   Timer,
   Settings,
-  ChevronLeft,
-  Menu,
-  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -70,14 +67,6 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
 
   return (
     <>
-      <button
-        onClick={handleToggle}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-white/80 backdrop-blur-md border border-border shadow-sm hover:bg-surface-secondary transition-all duration-200"
-        aria-label="Toggle sidebar"
-      >
-        {showSidebar ? <X size={20} /> : <Menu size={20} />}
-      </button>
-
       <AnimatePresence mode="wait">
         {showSidebar && (
           <motion.div
@@ -96,7 +85,7 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
         variants={sidebarVariants}
         className={`
           fixed top-0 left-0 z-50 h-full w-64
-          lg:translate-x-0 lg:static lg:z-auto
+          lg:static lg:z-auto lg:[transform:none]!
           flex flex-col
           bg-white/70 backdrop-blur-xl
           border-r border-border
@@ -112,13 +101,6 @@ export default function Sidebar({ isOpen: externalOpen, onToggle }) {
               TaskGenius
             </span>
           </div>
-          <button
-            onClick={handleToggle}
-            className="hidden lg:flex p-1.5 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-surface-tertiary transition-all duration-200"
-            aria-label="Collapse sidebar"
-          >
-            <ChevronLeft size={18} />
-          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
