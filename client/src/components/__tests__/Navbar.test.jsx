@@ -22,9 +22,10 @@ vi.mock('../../hooks/useNotifications', () => ({
 const renderWithRouter = (ui) => render(<BrowserRouter>{ui}</BrowserRouter>);
 
 describe('Navbar', () => {
-  it('renders the TaskGenius brand', () => {
+  it('renders the current page title', () => {
     renderWithRouter(<Navbar />);
-    expect(screen.getAllByText('TaskGenius').length).toBeGreaterThan(0);
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
   it('shows user initials in the avatar', () => {

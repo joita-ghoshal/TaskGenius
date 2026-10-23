@@ -5,6 +5,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const dotenv = require('dotenv');
+const webpush = require('web-push');
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
@@ -85,6 +86,7 @@ async function main() {
     started = true;
 
     const databaseUrl = `postgresql://postgres@127.0.0.1:${port}/postgres?schema=public&connection_limit=5`;
+    const vapidKeys = webpush.generateVAPIDKeys();
     const env = {
       ...process.env,
       NODE_ENV: 'test',
@@ -95,8 +97,8 @@ async function main() {
       CRON_SECRET: 'test-cron-secret',
       DISABLE_SCHEDULER: 'true',
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || 'test-gemini-key-not-real-000000',
-      VAPID_PUBLIC_KEY: 'BLeG11ISlneH2dcv76fyI0ai5vCXwQr9CjyGE-gOqtGUYvVj9JGhkUaZ4sAR9df7ebGGj9uc2k3mcdDsrw3paFQ',
-      VAPID_PRIVATE_KEY: 'yR_VXYF-tsvc9Ibz0uTQmfPF5IKlTWhh3w7J-VsaKf0',
+      VAPID_PUBLIC_KEY: vapidKeys.publicKey,
+      VAPID_PRIVATE_KEY: vapidKeys.privateKey,
       VAPID_SUBJECT: 'mailto:tests@taskgenius.app',
       EMAIL_HOST: '',
       EMAIL_USER: '',

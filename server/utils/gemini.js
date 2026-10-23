@@ -11,12 +11,16 @@ function isGeminiConfigured() {
 
 function candidateModels() {
   return [...new Set([
-    process.env.GEMINI_MODEL || 'gemini-3.5-flash',
-    'gemini-3.6-flash',
+    process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+    'gemini-flash-lite-latest',
     'gemini-3.5-flash-lite',
+    'gemini-2.5-flash-lite',
+    'gemini-flash-latest',
     'gemini-2.5-flash'
   ].filter(Boolean))];
 }
+
+const REQUEST_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 20000);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,10 +59,13 @@ async function generateText({ system, prompt, history = [], json = false, maxOut
   for (const modelName of models) {
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: system || undefined
-        });
+        const model = genAI.getGenerativeModel(
+          {
+            model: modelName,
+            systemInstruction: system || undefined
+          },
+          { timeout: REQUEST_TIMEOUT_MS }
+        );
         const chat = model.startChat({
           history,
           generationConfig: json
@@ -72,13 +79,15 @@ async function generateText({ system, prompt, history = [], json = false, maxOut
       } catch (error) {
         lastError = error;
         const status = error?.status;
-        const transient = status === 429 || status === 503 || status === 500;
-        if (transient && attempt < 2) {
+        const timedOut = error?.name === 'AbortError' || /timeout|aborted/i.test(error?.message || '');
+        const retryable = status === 503 || status === 500;
+        if (retryable && attempt < 2) {
           await sleep(1200 * attempt);
           continue;
         }
-        if (transient || status === 404) {
-          console.warn(`Gemini model ${modelName} unavailable (${status || error.message}); trying fallback`);
+        if (retryable || timedOut || status === 429 || status === 404) {
+          const reason = status || (timedOut ? 'timeout' : error.message);
+          console.warn(`Gemini model ${modelName} unavailable (${reason}); trying fallback`);
           break;
         }
         throw error;
