@@ -134,6 +134,9 @@ export default function AiChatPage() {
       const { data } = await aiAPI.chat({ message: text, sessionId })
       const aiMessage = { role: 'assistant', content: data.response || data.message || data.text || 'I understand.', id: data.id || uuidv4() }
       setMessages(prev => [...prev, aiMessage])
+      aiAPI.getHistory(sessionId)
+        .then(({ data: historyData }) => setSessions(historyData.sessions || []))
+        .catch(() => {})
 
       if (voiceResponse && 'speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(aiMessage.content)

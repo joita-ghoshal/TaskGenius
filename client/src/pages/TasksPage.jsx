@@ -182,6 +182,7 @@ export default function TasksPage() {
       const notesText = (data.notes || '').trim();
       const payload = {
         ...data,
+        deadline: data.deadline ? new Date(data.deadline).toISOString() : null,
         estimatedDuration: data.estimatedDuration ? Number(data.estimatedDuration) : undefined,
         subtasks: data.subtasks || [],
         notes: notesText ? notesText.split('\n').filter(l => l.trim()).map(content => ({ content: content.trim() })) : [],
