@@ -27,10 +27,12 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  tasks         Task[]
-  notifications Notification[]
-  aiHistories   AiHistory[]
-  analytics     Analytics[]
+  tasks              Task[]
+  notifications      Notification[]
+  aiHistories        AiHistory[]
+  analytics          Analytics[]
+  pushSubscriptions  PushSubscription[]
+  reminderLogs       ReminderLog[]
 
   @@map("users")
 }
@@ -58,6 +60,7 @@ model Task {
   subtasks      TaskSubtask[]
   notes         TaskNote[]
   notifications Notification[]
+  reminderLogs  ReminderLog[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -151,4 +154,36 @@ model Analytics {
   @@unique([userId, date])
   @@index([userId, date])
   @@map("analytics")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model ReminderLog {
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @map("user_id") @db.Uuid
+  taskId  String?  @map("task_id") @db.Uuid
+  kind    String   @db.VarChar(40)
+  channel String   @db.VarChar(20)
+  sentAt  DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, kind, channel])
+  @@index([userId, sentAt])
+  @@map("reminder_logs")
 }

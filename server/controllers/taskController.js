@@ -1,26 +1,12 @@
 const prisma = require('../config/prisma');
-const { notify, notifyForDeadline } = require('../utils/notify');
+const { notify } = require('../utils/notify');
 const { bumpAnalytics } = require('../utils/analytics');
-
-const calculateRiskLevel = (deadline) => {
-  if (!deadline) return 'low';
-  const hoursLeft = (new Date(deadline) - new Date()) / (1000 * 60 * 60);
-  if (hoursLeft < 1) return 'critical';
-  if (hoursLeft < 6) return 'high';
-  if (hoursLeft < 24) return 'medium';
-  if (hoursLeft < 72) return 'low';
-  return 'low';
-};
-
-const calculateCompletionProbability = (deadline) => {
-  if (!deadline) return 100;
-  const now = new Date();
-  const deadlineDate = new Date(deadline);
-  const totalTime = deadlineDate - now;
-  if (totalTime <= 0) return 0;
-  const hoursLeft = totalTime / (1000 * 60 * 60);
-  return Math.round(Math.max(0, Math.min(100, hoursLeft > 72 ? 95 : hoursLeft > 24 ? 75 : hoursLeft > 6 ? 50 : hoursLeft > 1 ? 25 : 10)));
-};
+const {
+  calculateRiskLevel,
+  calculateCompletionProbability,
+  sweepMissedTasks
+} = require('../utils/deadlines');
+const { dispatchDeadlineReminders } = require('../utils/reminderDispatcher');
 
 const taskInclude = {
   subtasks: { orderBy: { createdAt: 'asc' } },
@@ -29,6 +15,7 @@ const taskInclude = {
 
 exports.getTasks = async (req, res, next) => {
   try {
+    await sweepMissedTasks({ userId: req.user.id });
     const { status, priority, category, search, sort } = req.query;
     const where = { userId: req.user.id };
     if (status) where.status = status;
@@ -50,6 +37,7 @@ exports.getTasks = async (req, res, next) => {
 
 exports.getTask = async (req, res, next) => {
   try {
+    await sweepMissedTasks({ userId: req.user.id });
     const task = await prisma.task.findFirst({
       where: { id: req.params.id, userId: req.user.id },
       include: taskInclude
@@ -65,6 +53,7 @@ exports.createTask = async (req, res, next) => {
   try {
     const { title, description, priority, category, deadline, estimatedDuration, subtasks, notes } = req.body;
     const deadlineDate = deadline ? new Date(deadline) : null;
+    const isOverdue = Boolean(deadlineDate && deadlineDate <= new Date());
     const riskLevel = calculateRiskLevel(deadlineDate);
     const completionProbability = calculateCompletionProbability(deadlineDate);
 
@@ -83,6 +72,7 @@ exports.createTask = async (req, res, next) => {
         estimatedDuration: estimatedDuration || 60,
         riskLevel,
         completionProbability,
+        status: isOverdue ? 'missed' : 'pending',
         subtasks: subtasks?.length > 0 ? {
           create: subtasks.map(s => ({ title: s.title || s }))
         } : undefined,
@@ -92,8 +82,21 @@ exports.createTask = async (req, res, next) => {
       },
       include: taskInclude
     });
-    notifyForDeadline(req.user.id, task);
+
     bumpAnalytics(req.user.id, { tasksCreated: 1 });
+    if (isOverdue) {
+      bumpAnalytics(req.user.id, { tasksMissed: 1 });
+      await notify(req.user.id, {
+        type: 'alert',
+        title: 'Deadline missed',
+        message: `"${task.title}" was created with a deadline that has already passed.`,
+        taskId: task.id,
+        urgency: 'high',
+        actionUrl: '/dashboard/tasks?status=missed'
+      });
+    } else {
+      await dispatchDeadlineReminders({ userId: req.user.id, taskId: task.id });
+    }
     res.status(201).json({ success: true, task });
   } catch (error) {
     next(error);
@@ -113,15 +116,21 @@ exports.updateTask = async (req, res, next) => {
     if (description !== undefined) data.description = description;
     if (priority) data.priority = priority;
     if (category) data.category = category;
+    const now = new Date();
     if (deadline !== undefined) {
       data.deadline = deadline ? new Date(deadline) : null;
-      data.riskLevel = calculateRiskLevel(data.deadline);
-      data.completionProbability = calculateCompletionProbability(data.deadline);
+      data.riskLevel = calculateRiskLevel(data.deadline, now);
+      data.completionProbability = calculateCompletionProbability(data.deadline, now);
+      if (!status && existing.status === 'missed' && data.deadline && data.deadline > now) {
+        data.status = 'pending';
+        data.completedAt = null;
+      }
     }
     if (estimatedDuration) data.estimatedDuration = estimatedDuration;
     if (status) {
       data.status = status;
-      if (status === 'completed') data.completedAt = new Date();
+      if (status === 'completed') data.completedAt = now;
+      else if (existing.status === 'completed') data.completedAt = null;
     }
     if (completionProbability !== undefined) data.completionProbability = completionProbability;
 
@@ -146,16 +155,23 @@ exports.updateTask = async (req, res, next) => {
       }
     }
 
-    const task = await prisma.task.update({
+    await prisma.task.update({
       where: { id: req.params.id },
-      data,
+      data
+    });
+
+    await sweepMissedTasks({ userId: req.user.id, now: new Date() });
+    const task = await prisma.task.findFirst({
+      where: { id: req.params.id, userId: req.user.id },
       include: taskInclude
     });
 
-    if (deadline !== undefined) notifyForDeadline(req.user.id, task);
-    if (status === 'completed') {
+    const taskWasCompleted = existing.status === 'completed';
+    const taskIsCompleted = task.status === 'completed';
+
+    if (!taskWasCompleted && taskIsCompleted) {
       bumpAnalytics(req.user.id, { tasksCompleted: 1 });
-      notify(req.user.id, {
+      await notify(req.user.id, {
         type: 'success',
         title: 'Task completed',
         message: `"${task.title}" marked as completed. Great work!`,
@@ -163,7 +179,14 @@ exports.updateTask = async (req, res, next) => {
         urgency: 'low',
         actionUrl: '/dashboard/analytics'
       });
+    } else if (taskWasCompleted && !taskIsCompleted) {
+      bumpAnalytics(req.user.id, { tasksCompleted: -1 });
     }
+
+    if (!taskIsCompleted && (deadline !== undefined || data.status === 'pending')) {
+      await dispatchDeadlineReminders({ userId: req.user.id, taskId: task.id });
+    }
+
     res.json({ success: true, task });
   } catch (error) {
     next(error);
@@ -187,26 +210,31 @@ exports.getDashboard = async (req, res, next) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    await sweepMissedTasks({ userId, now });
     const allTasks = await prisma.task.findMany({ where: { userId } });
 
     const todayTasks = allTasks.filter(t => t.deadline && new Date(t.deadline) >= today && new Date(t.deadline) < tomorrow);
-    const upcomingTasks = allTasks.filter(t => t.deadline && new Date(t.deadline) > tomorrow && t.status !== 'completed').slice(0, 10);
+    const upcomingTasks = allTasks.filter(t => t.deadline && new Date(t.deadline) > tomorrow && t.status !== 'completed' && t.status !== 'missed').slice(0, 10);
     const completedToday = allTasks.filter(t => t.status === 'completed' && t.completedAt && new Date(t.completedAt) >= today).length;
     const pendingTasks = allTasks.filter(t => t.status === 'pending' || t.status === 'in-progress').length;
     const completedTasks = allTasks.filter(t => t.status === 'completed').length;
     const totalTasks = allTasks.length;
     const missedTasks = allTasks.filter(t => t.status === 'missed').length;
-    const productivityScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const overdueTasks = allTasks.filter(t => t.deadline && new Date(t.deadline) < now && t.status !== 'completed');
+    const scoredTasks = completedTasks + missedTasks;
+    const productivityScore = scoredTasks > 0 ? Math.round((completedTasks / scoredTasks) * 100) : 0;
 
-    const criticalTasks = allTasks.filter(t => t.riskLevel === 'critical' && t.status !== 'completed');
+    const criticalTasks = allTasks.filter(t => t.status !== 'completed' && t.status !== 'missed' && (
+      t.riskLevel === 'critical' || (t.deadline && (new Date(t.deadline) - now) / 3600000 < 1)
+    ));
     const emergencyTasks = allTasks.filter(t => {
-      if (!t.deadline || t.status === 'completed') return false;
+      if (!t.deadline || t.status === 'completed' || t.status === 'missed') return false;
       const hoursLeft = (new Date(t.deadline) - now) / (1000 * 60 * 60);
       return hoursLeft < 3 && hoursLeft > 0;
     });
 
     const nearestDeadline = allTasks
-      .filter(t => t.deadline && t.status !== 'completed')
+      .filter(t => t.deadline && t.status !== 'completed' && t.status !== 'missed')
       .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))[0];
 
     const categoryMap = {};
@@ -227,6 +255,8 @@ exports.getDashboard = async (req, res, next) => {
         totalTasks,
         completedTasks,
         missedTasks,
+        overdueTasks,
+        overdueCount: overdueTasks.length,
         productivityScore,
         criticalTasks,
         emergencyTasks,

@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../config/prisma');
+const { isEmailConfigured, sendPasswordResetEmail } = require('../utils/email');
 
 const sanitizeUser = (user) => ({
   id: user.id,
@@ -110,21 +111,50 @@ exports.updatePassword = async (req, res, next) => {
 
 exports.forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+    if (!isEmailConfigured()) {
+      return res.status(503).json({
+        success: false,
+        code: 'EMAIL_NOT_CONFIGURED',
+        message: 'Password reset email is not configured on the server. Please contact the administrator.'
+      });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'No account with that email' });
+      return res.json({
+        success: true,
+        message: 'If an account exists for that email, a password reset link has been sent.'
+      });
     }
+
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    const resetPasswordExpire = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const resetPasswordExpire = new Date(Date.now() + 60 * 60 * 1000);
+
+    const baseUrl = (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/$/, '');
+    const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
+
     await prisma.user.update({
       where: { id: user.id },
       data: { resetPasswordToken, resetPasswordExpire }
     });
-    const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
-    // In production, send email with resetUrl. For now return token in response.
-    res.json({ success: true, message: 'Password reset link sent', resetUrl });
+
+    const delivery = await sendPasswordResetEmail(user, resetUrl);
+    if (!delivery.sent) {
+      return res.status(502).json({
+        success: false,
+        code: 'EMAIL_SEND_FAILED',
+        message: 'We could not send the reset email right now. Please try again later.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account exists for that email, a password reset link has been sent.'
+    });
   } catch (error) {
     next(error);
   }

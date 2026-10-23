@@ -10,7 +10,9 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test": "node scripts/with-test-db.js run",
+    "test:watch": "node scripts/with-test-db.js"
   },
   "keywords": [
     "taskgenius",
@@ -38,9 +40,14 @@
     "nodemailer": "^6.10.0",
     "pg": "^8.22.0",
     "prisma": "^5.22.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "mailparser": "^3.12.4",
+    "nodemon": "^3.1.9",
+    "smtp-server": "^3.21.1",
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
   }
 }
